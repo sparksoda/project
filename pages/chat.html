@@ -1,1 +1,194 @@
-<h1>page</h1>
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>ChatGPT UI</title>
+
+<style>
+
+body{
+    margin:0;
+    font-family: system-ui;
+    background:#343541;
+    color:white;
+    height:100vh;
+    display:flex;
+}
+
+.sidebar{
+    width:260px;
+    background:#202123;
+    padding:10px;
+}
+
+.sidebar button{
+    width:100%;
+    padding:12px;
+    background:#343541;
+    border:1px solid #555;
+    color:white;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+.main{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+}
+
+.chat{
+    flex:1;
+    overflow-y:auto;
+    padding:30px;
+}
+
+.message{
+    display:flex;
+    padding:20px;
+}
+
+.message.user{
+    background:#343541;
+}
+
+.message.bot{
+    background:#444654;
+}
+
+.avatar{
+    width:32px;
+    height:32px;
+    border-radius:4px;
+    background:#10a37f;
+    margin-right:15px;
+}
+
+.message.user .avatar{
+    background:#19c37d;
+}
+
+.text{
+    white-space:pre-wrap;
+}
+
+.input-area{
+    padding:20px;
+    background:#343541;
+}
+
+.input-box{
+    max-width:800px;
+    margin:auto;
+    display:flex;
+    background:#40414f;
+    border-radius:10px;
+    padding:10px;
+}
+
+input{
+    flex:1;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:white;
+    font-size:16px;
+}
+
+button.send{
+    background:#10a37f;
+    border:none;
+    color:white;
+    padding:8px 16px;
+    border-radius:6px;
+    cursor:pointer;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="sidebar">
+<button onclick="newChat()">+ New Chat</button>
+</div>
+
+<div class="main">
+
+<div id="chat" class="chat"></div>
+
+<div class="input-area">
+<div class="input-box">
+<input id="input" placeholder="Send a message">
+<button class="send" onclick="send()">Send</button>
+</div>
+</div>
+
+</div>
+
+<script>
+
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+
+input.addEventListener("keypress", e=>{
+if(e.key==="Enter") send();
+});
+
+function addMessage(text,type){
+
+const msg = document.createElement("div");
+msg.className="message "+type;
+
+msg.innerHTML = `
+<div class="avatar"></div>
+<div class="text">${text}</div>
+`;
+
+chat.appendChild(msg);
+chat.scrollTop = chat.scrollHeight;
+
+return msg.querySelector(".text");
+}
+
+function send(){
+
+const text = input.value.trim();
+if(!text) return;
+
+addMessage(text,"user");
+
+input.value="";
+
+const botText = addMessage("","bot");
+
+fakeTyping("This is a demo reply like ChatGPT.",botText);
+
+}
+
+function fakeTyping(text,element){
+
+let i=0;
+
+const timer=setInterval(()=>{
+
+element.textContent+=text[i];
+
+i++;
+
+chat.scrollTop = chat.scrollHeight;
+
+if(i>=text.length) clearInterval(timer);
+
+},20);
+
+}
+
+function newChat(){
+chat.innerHTML="";
+}
+
+</script>
+
+</body>
+</html>
