@@ -1,1 +1,34 @@
+<title>Redirecting...</title>
+<script>
+window.onload = function () {
 
+    const params = new URLSearchParams(window.location.search);
+    const url = params.get("url");
+    const page = params.get("page");
+
+    const defaultPage = "pages/chat.html";
+
+    const pageMap = {
+        home: "pages/homepage.html",
+        chat: "pages/chat.html",
+        docs: "pages/docs.html",
+        github: "https://github.com/sparksoda/"
+    };
+
+    if (url) {
+        try {
+            new URL(url);
+            window.location.href = url;
+            return;
+        } catch(e) {}
+    }
+
+    if (page && pageMap[page]) {
+        window.location.href = pageMap[page];
+        return;
+    }
+
+    window.location.href = defaultPage;
+};
+</script>
+<h1>Redirecting...</h1>
