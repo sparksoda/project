@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<body>
+<textarea id="input"></textarea>
+<button onclick="run()">run</button>
+<pre id="out"></pre>
+
+<script type="module">
+import {CreateMLCEngine} from 
+"https://esm.run/@mlc-ai/web-llm"
+
+const engine = await CreateMLCEngine(
+ "Phi-3-mini-4k-instruct"
+)
+
+async function run(){
+ const input = document.getElementById("input").value
+
+ const reply = await engine.chat.completions.create({
+   messages:[
+     {role:"user",content:input}
+   ]
+ })
+
+ document.getElementById("out").textContent =
+ reply.choices[0].message.content
+}
+</script>
+</body>
+</html>
