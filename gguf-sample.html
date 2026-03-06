@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GGUF Model Loader Example</title>
+    <script src="https://your-gguf-library-url.js"></script>
+</head>
+<body>
+    <h1>GGUF Model Loader for Text Processing</h1>
+    <div>
+        <label for="inputText">Enter Text:</label>
+        <textarea id="inputText" rows="10" cols="30"></textarea>
+    </div>
+    <button id="processButton">Process Text</button>
+    <div id="outputContainer">
+        <h2>Processed Output:</h2>
+        <div id="outputText"></div>
+    </div>
+    <script>
+        document.getElementById('processButton').onclick = async function() {
+            const text = document.getElementById('inputText').value;
+            const processedText = await GGUFModel.process(text);
+            document.getElementById('outputText').innerText = processedText;
+        };
+    </script>
+</body>
+</html>
