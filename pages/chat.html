@@ -1,194 +1,427 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<title>ChatGPT UI</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GGUF Model Viewer with WebGPU</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-<style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
 
-body{
-    margin:0;
-    font-family: system-ui;
-    background:#343541;
-    color:white;
-    height:100vh;
-    display:flex;
-}
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 1200px;
+            width: 100%;
+            padding: 30px;
+        }
 
-.sidebar{
-    width:260px;
-    background:#202123;
-    padding:10px;
-}
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
 
-.sidebar button{
-    width:100%;
-    padding:12px;
-    background:#343541;
-    border:1px solid #555;
-    color:white;
-    border-radius:6px;
-    cursor:pointer;
-}
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
 
-.main{
-    flex:1;
-    display:flex;
-    flex-direction:column;
-}
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
 
-.chat{
-    flex:1;
-    overflow-y:auto;
-    padding:30px;
-}
+        .panel {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+        }
 
-.message{
-    display:flex;
-    padding:20px;
-}
+        .panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
 
-.message.user{
-    background:#343541;
-}
+        .panel-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #667eea;
+            border-radius: 2px;
+            margin-right: 10px;
+        }
 
-.message.bot{
-    background:#444654;
-}
+        .form-group {
+            margin-bottom: 15px;
+        }
 
-.avatar{
-    width:32px;
-    height:32px;
-    border-radius:4px;
-    background:#10a37f;
-    margin-right:15px;
-}
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+            font-size: 14px;
+        }
 
-.message.user .avatar{
-    background:#19c37d;
-}
+        input[type="file"],
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
 
-.text{
-    white-space:pre-wrap;
-}
+        input[type="file"]::file-selector-button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            margin-right: 10px;
+        }
 
-.input-area{
-    padding:20px;
-    background:#343541;
-}
+        input[type="file"]::file-selector-button:hover {
+            background: #5568d3;
+        }
 
-.input-box{
-    max-width:800px;
-    margin:auto;
-    display:flex;
-    background:#40414f;
-    border-radius:10px;
-    padding:10px;
-}
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
 
-input{
-    flex:1;
-    background:transparent;
-    border:none;
-    outline:none;
-    color:white;
-    font-size:16px;
-}
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
 
-button.send{
-    background:#10a37f;
-    border:none;
-    color:white;
-    padding:8px 16px;
-    border-radius:6px;
-    cursor:pointer;
-}
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
 
-</style>
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #d0d0d0;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .status-box {
+            background: white;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 15px;
+            font-size: 13px;
+            color: #555;
+            min-height: 60px;
+            overflow-y: auto;
+            max-height: 150px;
+        }
+
+        .status-box.success {
+            border-left-color: #4caf50;
+            background-color: #f1f8f6;
+            color: #2e7d32;
+        }
+
+        .status-box.error {
+            border-left-color: #f44336;
+            background-color: #fef5f5;
+            color: #c62828;
+        }
+
+        .status-box.info {
+            border-left-color: #2196f3;
+            background-color: #f0f7ff;
+            color: #1565c0;
+        }
+
+        canvas {
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+            background: #111;
+            display: none;
+        }
+
+        canvas.visible {
+            display: block;
+        }
+
+        .canvas-placeholder {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            border: 2px dashed #667eea;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #999;
+            font-size: 14px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .stat-item {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 3px;
+        }
+
+        .stat-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .webgpu-status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+        }
+
+        .webgpu-status.supported {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border-left: 3px solid #4caf50;
+        }
+
+        .webgpu-status.unsupported {
+            background: #ffebee;
+            color: #c62828;
+            border-left: 3px solid #f44336;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+        }
+
+        .info-section {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #1565c0;
+        }
+
+        .info-section strong {
+            display: block;
+            margin-bottom: 5px;
+        }
+    </style>
 </head>
-
 <body>
+    <div class="container">
+        <h1>🚀 GGUF Model Viewer</h1>
+        <p class="subtitle">WebGPU対応のGGUFモデル実行プラットフォーム</p>
 
-<div class="sidebar">
-<button onclick="newChat()">+ New Chat</button>
-</div>
+        <div class="main-content">
+            <!-- Left Panel: Controls -->
+            <div>
+                <div class="panel">
+                    <div class="panel-title">モデル設定</div>
 
-<div class="main">
+                    <div class="webgpu-status" id="gpuStatus">
+                        <span class="loader"></span>
+                        <span id="gpuStatusText">チェック中...</span>
+                    </div>
 
-<div id="chat" class="chat"></div>
+                    <div class="info-section">
+                        <strong>使い方：</strong>
+                        GGUF形式のモデルファイルを選択してください。WebGPUを使用して高速に推論します。
+                    </div>
 
-<div class="input-area">
-<div class="input-box">
-<input id="input" placeholder="Send a message">
-<button class="send" onclick="send()">Send</button>
-</div>
-</div>
+                    <div class="form-group">
+                        <label for="modelFile">モデルファイルを選択</label>
+                        <input type="file" id="modelFile" accept=".gguf" />
+                    </div>
 
-</div>
+                    <div class="form-group">
+                        <label for="prompt">プロンプト</label>
+                        <input type="text" id="prompt" placeholder="モデルに入力するテキスト" />
+                    </div>
 
-<script>
+                    <div class="form-group">
+                        <label for="contextSize">コンテキストサイズ</label>
+                        <select id="contextSize">
+                            <option value="128">128</option>
+                            <option value="256">256</option>
+                            <option value="512" selected>512</option>
+                            <option value="1024">1024</option>
+                            <option value="2048">2048</option>
+                        </select>
+                    </div>
 
-const chat = document.getElementById("chat");
-const input = document.getElementById("input");
+                    <div class="form-group">
+                        <label for="temperature">Temperature (0.1 - 2.0)</label>
+                        <input type="text" id="temperature" value="0.7" placeholder="0.7" />
+                    </div>
 
-input.addEventListener("keypress", e=>{
-if(e.key==="Enter") send();
-});
+                    <div class="button-group">
+                        <button class="btn-primary" id="runBtn" disabled>
+                            推論を実行
+                        </button>
+                        <button class="btn-secondary" id="resetBtn">
+                            リセット
+                        </button>
+                    </div>
 
-function addMessage(text,type){
+                    <div class="status-box info" id="statusBox">
+                        モデルを選択してください
+                    </div>
+                </div>
 
-const msg = document.createElement("div");
-msg.className="message "+type;
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-title">統計情報</div>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <div class="stat-label">モデルサイズ</div>
+                            <div class="stat-value" id="modelSize">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">層数</div>
+                            <div class="stat-value" id="layerCount">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">推論時間</div>
+                            <div class="stat-value" id="inferenceTime">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">トークン速度</div>
+                            <div class="stat-value" id="tokenSpeed">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">GPU メモリ</div>
+                            <div class="stat-value" id="gpuMemory">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">処理状態</div>
+                            <div class="stat-value" id="status">待機中</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-msg.innerHTML = `
-<div class="avatar"></div>
-<div class="text">${text}</div>
-`;
+            <!-- Right Panel: Output -->
+            <div>
+                <div class="panel">
+                    <div class="panel-title">レンダリング結果</div>
+                    <div class="canvas-placeholder" id="canvasPlaceholder">
+                        WebGPUレンダリング表示エリア
+                    </div>
+                    <canvas id="gpuCanvas"></canvas>
+                </div>
 
-chat.appendChild(msg);
-chat.scrollTop = chat.scrollHeight;
+                <div class="panel" style="margin-top: 20px;">
+                    <div class="panel-title">出力テキスト</div>
+                    <div class="status-box" id="outputBox" style="max-height: 300px;">
+                        出力がここに表示されます
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-return msg.querySelector(".text");
-}
-
-function send(){
-
-const text = input.value.trim();
-if(!text) return;
-
-addMessage(text,"user");
-
-input.value="";
-
-const botText = addMessage("","bot");
-
-fakeTyping("This is a demo reply like ChatGPT.",botText);
-
-}
-
-function fakeTyping(text,element){
-
-let i=0;
-
-const timer=setInterval(()=>{
-
-element.textContent+=text[i];
-
-i++;
-
-chat.scrollTop = chat.scrollHeight;
-
-if(i>=text.length) clearInterval(timer);
-
-},20);
-
-}
-
-function newChat(){
-chat.innerHTML="";
-}
-
-</script>
-
+    <script src="main.js"></script>
 </body>
 </html>
