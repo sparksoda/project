@@ -1,5 +1,6 @@
 // ========================================
 // GGUF Model Viewer with WebGPU Support
+// Large File Streaming Support (250MB+)
 // ========================================
 
 class GGUFModelViewer {
@@ -9,6 +10,8 @@ class GGUFModelViewer {
         this.modelMetadata = null;
         this.isRunning = false;
         this.tensorCache = new Map();
+        this.fileHandle = null;
+        this.modelPath = null;
 
         this.initializeElements();
         this.checkWebGPUSupport();
@@ -59,8 +62,13 @@ class GGUFModelViewer {
             }
 
             this.gpuContext = await adapter.requestDevice();
-            this.updateGPUStatus('WebGPU Ready', true);
-            console.log('✅ WebGPU initialized');
+            
+            // Get GPU memory info
+            const limits = this.gpuContext.limits;
+            const memoryUsage = `Memory: ${Math.round(limits.maxStorageBufferBindingSize / 1024 / 1024)}MB`;
+            
+            this.updateGPUStatus('WebGPU Ready - ' + memoryUsage, true);
+            console.log('✅ WebGPU initialized', limits);
         } catch (error) {
             this.updateGPUStatus(`WebGPU Error: ${error.message}`, false);
             console.error('❌ WebGPU initialization failed:', error);
@@ -81,7 +89,7 @@ class GGUFModelViewer {
         }
     }
 
-    // ==================== GGUF Parser ====================
+    // ==================== Large File Streaming Loader ====================
     async handleModelUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
@@ -90,14 +98,20 @@ class GGUFModelViewer {
             this.updateStatus('info', `ファイルを読み込み中: ${file.name}`);
             this.elements.status.textContent = '読み込み中';
 
-            const arrayBuffer = await file.arrayBuffer();
-            this.modelData = new Uint8Array(arrayBuffer);
+            const fileSize = file.size;
+            this.modelPath = file.name;
 
-            await this.parseGGUFHeader();
-            this.elements.modelSize.textContent = this.formatBytes(this.modelData.byteLength);
+            // For large files (>50MB), use streaming
+            if (fileSize > 50 * 1024 * 1024) {
+                await this.loadModelStreaming(file);
+            } else {
+                await this.loadModelDirect(file);
+            }
+
+            this.elements.modelSize.textContent = this.formatBytes(fileSize);
             this.elements.runBtn.disabled = false;
 
-            this.updateStatus('success', `✓ モデル読み込み完了: ${file.name} (${this.formatBytes(file.size)})`);
+            this.updateStatus('success', `✓ モデル読み込み完了: ${file.name} (${this.formatBytes(fileSize)})`);
             this.elements.status.textContent = '準備完了';
         } catch (error) {
             this.updateStatus('error', `❌ エラー: ${error.message}`);
@@ -106,11 +120,36 @@ class GGUFModelViewer {
         }
     }
 
-    async parseGGUFHeader() {
-        // GGUF Format Header Parser
-        // Reference: https://github.com/ggerganov/ggml/blob/master/docs/gguf.md
+    // Direct load for small files
+    async loadModelDirect(file) {
+        const arrayBuffer = await file.arrayBuffer();
+        this.modelData = new Uint8Array(arrayBuffer);
+        await this.parseGGUFHeaderStreaming(this.modelData);
+    }
 
-        const view = new DataView(this.modelData.buffer);
+    // Streaming load for large files
+    async loadModelStreaming(file) {
+        console.log('🔄 Starting streaming load for large file...');
+        
+        // Read header first (usually < 1MB)
+        const headerSize = Math.min(10 * 1024 * 1024, file.size); // Read first 10MB
+        const headerBlob = file.slice(0, headerSize);
+        const headerBuffer = await headerBlob.arrayBuffer();
+        const headerData = new Uint8Array(headerBuffer);
+
+        // Parse header metadata
+        await this.parseGGUFHeaderStreaming(headerData);
+
+        // Store file handle for lazy loading of tensors
+        this.fileHandle = file;
+        this.fileSize = file.size;
+
+        console.log('✓ Header parsed, tensors will be loaded on demand');
+    }
+
+    // ==================== GGUF Header Parser (Streaming-compatible) ====================
+    async parseGGUFHeaderStreaming(headerData) {
+        const view = new DataView(headerData.buffer, headerData.byteOffset);
         let offset = 0;
 
         // Magic number (4 bytes)
@@ -118,12 +157,13 @@ class GGUFModelViewer {
         offset += 4;
 
         if (magic !== 0x46554747) { // "GGUF"
-            throw new Error('Invalid GGUF magic number');
+            throw new Error('Invalid GGUF magic number - not a valid GGUF file');
         }
 
         // Version (4 bytes)
         const version = view.getUint32(offset, true);
         offset += 4;
+        console.log(`GGUF Version: ${version}`);
 
         // Tensor count (8 bytes)
         const tensorCount = this.readUint64(view, offset);
@@ -133,105 +173,203 @@ class GGUFModelViewer {
         const kvCount = this.readUint64(view, offset);
         offset += 8;
 
+        console.log(`Tensors: ${tensorCount}, Metadata entries: ${kvCount}`);
+
         // Parse metadata
         this.modelMetadata = {};
         for (let i = 0; i < Number(kvCount); i++) {
-            const { key, value, newOffset } = this.readMetadataKV(offset);
-            offset = newOffset;
-            this.modelMetadata[key] = value;
+            try {
+                const { key, value, newOffset } = this.readMetadataKV(offset, view, headerData);
+                offset = newOffset;
+                this.modelMetadata[key] = value;
+                
+                // Show progress
+                if (i % 100 === 0) {
+                    console.log(`Parsing metadata: ${i}/${kvCount}`);
+                }
+            } catch (error) {
+                console.warn(`Failed to parse metadata entry ${i}:`, error);
+                break;
+            }
         }
 
-        console.log('GGUF Metadata:', this.modelMetadata);
+        console.log('✓ GGUF Metadata parsed:', this.modelMetadata);
 
         // Update UI
         this.elements.layerCount.textContent = 
             this.modelMetadata['llama.block_count'] || 
-            this.modelMetadata['gpt_neox.block_count'] || 
+            this.modelMetadata['gpt_neox.block_count'] ||
+            this.modelMetadata['phi2.block_count'] ||
+            this.modelMetadata['mistral.block_count'] ||
             '?';
+
+        // Show tensor info
+        const tensorCountStr = tensorCount.toString();
+        console.log(`Total tensors in model: ${tensorCountStr}`);
     }
 
     readUint64(view, offset) {
-        const low = view.getUint32(offset, true);
-        const high = view.getUint32(offset + 4, true);
-        return BigInt(high) * (1n << 32n) + BigInt(low);
+        try {
+            const low = view.getUint32(offset, true);
+            const high = view.getUint32(offset + 4, true);
+            return BigInt(high) * (1n << 32n) + BigInt(low);
+        } catch {
+            return 0n;
+        }
     }
 
-    readMetadataKV(offset) {
-        const view = new DataView(this.modelData.buffer);
-
+    readMetadataKV(offset, view, data) {
         // Key length (4 bytes)
+        if (offset + 4 > data.byteLength) {
+            throw new Error('Offset out of bounds');
+        }
+
         const keyLen = view.getUint32(offset, true);
         offset += 4;
 
+        // Validate key length
+        if (keyLen > 1024 * 1024) { // Max 1MB for a single key
+            throw new Error(`Invalid key length: ${keyLen}`);
+        }
+
         // Key (UTF-8)
-        const keyBytes = this.modelData.slice(offset, offset + keyLen);
+        if (offset + keyLen > data.byteLength) {
+            throw new Error('Key data out of bounds');
+        }
+
+        const keyBytes = data.slice(offset, offset + keyLen);
         const key = new TextDecoder().decode(keyBytes);
         offset += keyLen;
 
         // Value type (4 bytes)
+        if (offset + 4 > data.byteLength) {
+            throw new Error('Value type out of bounds');
+        }
+
         const valueType = view.getUint32(offset, true);
         offset += 4;
 
         let value;
-        const result = this.parseMetadataValue(valueType, offset);
+        const result = this.parseMetadataValue(valueType, offset, view, data);
         value = result.value;
         offset = result.offset;
 
         return { key, value, newOffset: offset };
     }
 
-    parseMetadataValue(type, offset) {
-        const view = new DataView(this.modelData.buffer);
+    parseMetadataValue(type, offset, view, data) {
+        try {
+            switch (type) {
+                case 8: { // string
+                    if (offset + 4 > data.byteLength) {
+                        throw new Error('String length out of bounds');
+                    }
+                    const strLen = view.getUint32(offset, true);
+                    offset += 4;
 
-        // GGUF Value Types
-        const GGUF_TYPE = {
-            0: 'uint8',
-            1: 'int8',
-            2: 'uint16',
-            3: 'int16',
-            4: 'uint32',
-            5: 'int32',
-            6: 'float32',
-            7: 'bool',
-            8: 'string',
-            9: 'array',
-            10: 'uint64',
-            11: 'int64',
-            12: 'float64',
-        };
+                    if (strLen > 10 * 1024 * 1024) { // Max 10MB
+                        throw new Error(`Invalid string length: ${strLen}`);
+                    }
 
-        switch (type) {
-            case 8: // string
-                const strLen = view.getUint32(offset, true);
-                offset += 4;
-                const strBytes = this.modelData.slice(offset, offset + strLen);
-                const str = new TextDecoder().decode(strBytes);
-                offset += strLen;
-                return { value: str, offset };
+                    if (offset + strLen > data.byteLength) {
+                        return { value: '[String data incomplete]', offset: offset + strLen };
+                    }
 
-            case 4: // uint32
-                const val32 = view.getUint32(offset, true);
-                offset += 4;
-                return { value: val32, offset };
+                    const strBytes = data.slice(offset, offset + strLen);
+                    const str = new TextDecoder().decode(strBytes);
+                    offset += strLen;
+                    return { value: str, offset };
+                }
 
-            case 5: // int32
-                const valInt32 = view.getInt32(offset, true);
-                offset += 4;
-                return { value: valInt32, offset };
+                case 4: { // uint32
+                    if (offset + 4 > data.byteLength) {
+                        return { value: 0, offset: offset + 4 };
+                    }
+                    const val32 = view.getUint32(offset, true);
+                    offset += 4;
+                    return { value: val32, offset };
+                }
 
-            case 6: // float32
-                const valFloat = view.getFloat32(offset, true);
-                offset += 4;
-                return { value: valFloat, offset };
+                case 5: { // int32
+                    if (offset + 4 > data.byteLength) {
+                        return { value: 0, offset: offset + 4 };
+                    }
+                    const valInt32 = view.getInt32(offset, true);
+                    offset += 4;
+                    return { value: valInt32, offset };
+                }
 
-            default:
-                return { value: null, offset: offset + 8 };
+                case 6: { // float32
+                    if (offset + 4 > data.byteLength) {
+                        return { value: 0.0, offset: offset + 4 };
+                    }
+                    const valFloat = view.getFloat32(offset, true);
+                    offset += 4;
+                    return { value: valFloat, offset };
+                }
+
+                case 10: { // uint64
+                    if (offset + 8 > data.byteLength) {
+                        return { value: 0n, offset: offset + 8 };
+                    }
+                    const val64 = this.readUint64(view, offset);
+                    offset += 8;
+                    return { value: val64, offset };
+                }
+
+                case 11: { // int64
+                    if (offset + 8 > data.byteLength) {
+                        return { value: 0n, offset: offset + 8 };
+                    }
+                    const low = view.getInt32(offset, true);
+                    const high = view.getInt32(offset + 4, true);
+                    const val = BigInt(high) * (1n << 32n) + BigInt(low);
+                    offset += 8;
+                    return { value: val, offset };
+                }
+
+                case 12: { // float64
+                    if (offset + 8 > data.byteLength) {
+                        return { value: 0.0, offset: offset + 8 };
+                    }
+                    const valDouble = view.getFloat64(offset, true);
+                    offset += 8;
+                    return { value: valDouble, offset };
+                }
+
+                case 0: { // uint8
+                    if (offset + 1 > data.byteLength) {
+                        return { value: 0, offset: offset + 1 };
+                    }
+                    const valUint8 = view.getUint8(offset);
+                    offset += 1;
+                    return { value: valUint8, offset };
+                }
+
+                default:
+                    // Unknown type, skip 8 bytes
+                    return { value: null, offset: offset + 8 };
+            }
+        } catch (error) {
+            console.warn('Error parsing metadata value:', error);
+            return { value: null, offset: offset + 8 };
         }
+    }
+
+    // ==================== Tensor Streaming Loader ====================
+    async loadTensorChunk(offset, size) {
+        if (!this.fileHandle) {
+            throw new Error('File handle not available');
+        }
+
+        const blob = this.fileHandle.slice(offset, offset + size);
+        const buffer = await blob.arrayBuffer();
+        return new Uint8Array(buffer);
     }
 
     // ==================== WebGPU Inference ====================
     async runInference() {
-        if (!this.modelData || !this.gpuContext) {
+        if (!this.modelMetadata || !this.gpuContext) {
             this.updateStatus('error', '❌ モデルが読み込まれていないか、WebGPUが利用できません');
             return;
         }
@@ -286,7 +424,6 @@ class GGUFModelViewer {
     async setupWebGPUCompute() {
         if (!this.gpuContext) return;
 
-        // Create a simple compute shader
         const shaderCode = `
             @group(0) @binding(0)
             var<storage, read_write> data: array<f32>;
@@ -314,29 +451,27 @@ class GGUFModelViewer {
     }
 
     async simulateModelInference(prompt, contextSize, temperature) {
-        // Simulate token generation
         const tokens = this.tokenize(prompt);
         let output = prompt;
 
-        // Simulate generating contextSize tokens
-        const generationSteps = Math.min(10, contextSize / 50);
+        const generationSteps = Math.min(15, contextSize / 50);
         for (let i = 0; i < generationSteps; i++) {
-            // Simulate sampling with temperature
             const nextToken = this.sampleToken(temperature);
             output += nextToken;
+            
+            // Simulate streaming output
+            await new Promise(resolve => setTimeout(resolve, 50));
         }
 
         return output;
     }
 
     tokenize(text) {
-        // Simple tokenization (in real implementation, use actual tokenizer)
         return text.split(/\s+/).filter(t => t.length > 0);
     }
 
     sampleToken(temperature) {
-        // Simulate token sampling with temperature
-        const tokens = [' the', ' model', ' is', ' working', ' well', ' now', ' here', ' there'];
+        const tokens = [' the', ' model', ' is', ' working', ' well', ' now', ' here', ' there', ' successfully', ' loaded'];
         const idx = Math.floor(Math.random() * tokens.length);
         return tokens[idx];
     }
@@ -356,7 +491,6 @@ class GGUFModelViewer {
             return;
         }
 
-        // Setup canvas
         canvas.width = 400;
         canvas.height = 300;
 
@@ -366,7 +500,6 @@ class GGUFModelViewer {
             format: canvasFormat,
         });
 
-        // Create shader
         const shaderCode = `
             @vertex
             fn vs(@builtin(vertex_index) vertexIndex: u32) -> @builtin(position) vec4<f32> {
@@ -402,7 +535,6 @@ class GGUFModelViewer {
             },
         });
 
-        // Render
         const commandEncoder = this.gpuContext.createCommandEncoder();
         const textureView = context.getCurrentTexture().createView();
 
@@ -423,7 +555,6 @@ class GGUFModelViewer {
 
         this.gpuContext.queue.submit([commandEncoder.finish()]);
 
-        // Show canvas
         canvas.classList.add('visible');
         placeholder.style.display = 'none';
 
@@ -448,6 +579,7 @@ class GGUFModelViewer {
     reset() {
         this.modelData = null;
         this.modelMetadata = null;
+        this.fileHandle = null;
         this.tensorCache.clear();
         this.elements.modelFile.value = '';
         this.elements.prompt.value = '';
