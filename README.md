@@ -2,10 +2,11 @@
 
 | Date       | Project Name | Version      | Status | Comments    |
 | ---        | ---          | ---          | ---    | ---         |
-| 2026/03/06 | Project Soda | start        | OK     | no comments |
-| 2026/03/07 | Soda chat/UI | test release | OK     | no comments |
-| 2026/03/08 | Soda SLM     | test release | Plan   | no comments |
-| 2026/03/08 | Soda UI(Phy) | test release | Plan   | build in matter.min.js |
+| 2026/03/06 | Project Soda | start        | OK     | #all |
+| 2026/03/07 | Soda chat/UI | test release | OK     | #ui |
+| 2026/03/08 | Soda SLM     | test release | Plan   | #slm |
+| 2026/03/08 | Soda UI(Phy) | test release | Plan   | #ui,build in matter.min.js |
+| 2026/03/08 | homepage     | test release | Plan   | #homepage |
 
 pages/chat.html\
 this is Stable version UI.
