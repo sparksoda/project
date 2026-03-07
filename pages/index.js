@@ -26,7 +26,7 @@ async function loadModel() {
         const appConfig = {
             model_list: [
                 {
-                    model: "https://huggingface.co/mlc-ai/Qwen2.5-1.5B-Instruct-q4f32_1-MLC",
+                    model: "https://huggingface.co/mlc-ai/gemma-3-4b-it-q4f16_1-MLC",
                     model_id: selectedModel,
                     model_lib:
                         webllm.modelLibURLPrefix +
