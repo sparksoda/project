@@ -3,140 +3,215 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>独創的チャットUI</title>
+<title>Matter.js 浮遊チャットUI</title>
 <style>
   body {
     margin: 0;
-    height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: linear-gradient(120deg, #1e3c72, #2a5298);
-    font-family: 'Arial', sans-serif;
     overflow: hidden;
+    background: radial-gradient(circle at center, #0f2027, #203a43, #2c5364);
+    font-family: Arial, sans-serif;
   }
-
-  .chat-container {
-    position: relative;
-    width: 90%;
-    max-width: 600px;
-    height: 80%;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border-radius: 20px;
-    padding: 20px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-  }
-
-  .message {
-    max-width: 70%;
-    padding: 12px 18px;
-    border-radius: 20px;
-    color: white;
-    font-weight: bold;
-    position: relative;
-    animation: floatIn 0.5s ease forwards;
-  }
-
-  .user {
-    background: #ff6f61;
-    align-self: flex-end;
-    border-bottom-right-radius: 0;
-  }
-
-  .bot {
-    background: #6bc1ff;
-    align-self: flex-start;
-    border-bottom-left-radius: 0;
-  }
-
-  @keyframes floatIn {
-    0% { transform: translateY(20px); opacity: 0; }
-    100% { transform: translateY(0); opacity: 1; }
-  }
+  canvas { display: block; }
 
   .input-container {
-    position: fixed;
-    bottom: 20px;
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
-    width: 90%;
-    max-width: 600px;
     gap: 10px;
+    background: rgba(255,255,255,0.1);
+    padding: 10px 20px;
+    border-radius: 30px;
+    backdrop-filter: blur(10px);
+    z-index: 10;
   }
-
   .input-container input {
-    flex: 1;
-    padding: 12px 20px;
-    border-radius: 25px;
     border: none;
     outline: none;
+    padding: 10px 15px;
+    border-radius: 20px;
     font-size: 16px;
   }
-
   .input-container button {
-    padding: 12px 20px;
-    border-radius: 25px;
     border: none;
+    border-radius: 20px;
+    padding: 10px 20px;
     background: #ff6f61;
     color: white;
     font-weight: bold;
     cursor: pointer;
-    transition: transform 0.2s;
   }
 
-  .input-container button:hover {
-    transform: scale(1.1);
+  .settings-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(255,255,255,0.2);
+    border: none;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    cursor: pointer;
+    font-size: 20px;
+    color: white;
+    z-index: 10;
   }
 
-  /* 背景のゆっくり変化 */
-  @keyframes bgShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+  .settings-panel {
+    position: absolute;
+    top: 70px;
+    right: 20px;
+    width: 250px;
+    background: rgba(0,0,0,0.7);
+    padding: 15px;
+    border-radius: 15px;
+    display: none;
+    color: white;
+    z-index: 10;
   }
 
-  body {
-    background: linear-gradient(120deg, #1e3c72, #2a5298, #1e3c72);
-    background-size: 600% 600%;
-    animation: bgShift 30s ease infinite;
+  .settings-panel label {
+    display: block;
+    margin-top: 10px;
+    font-size: 14px;
   }
+  .settings-panel input[type="range"] { width: 100%; }
 </style>
 </head>
 <body>
-  <div class="chat-container" id="chat">
-    <!-- メッセージがここに追加される -->
-  </div>
+<button class="settings-btn" onclick="toggleSettings()">⚙️</button>
+<div class="settings-panel" id="settingsPanel">
+  <label>メッセージ速度: <input type="range" id="msgSpeed" min="0.1" max="1.5" step="0.05" value="0.5"></label>
+  <label>パーティクル数: <input type="range" id="particleNum" min="10" max="200" value="80"></label>
+</div>
 
-  <div class="input-container">
-    <input type="text" id="userInput" placeholder="メッセージを入力..." />
-    <button onclick="sendMessage()">送信</button>
-  </div>
+<div class="input-container">
+  <input type="text" id="userInput" placeholder="メッセージを入力..." />
+  <button onclick="sendMessage()">送信</button>
+</div>
 
-  <script>
-    const chat = document.getElementById('chat');
-    function sendMessage() {
-      const input = document.getElementById('userInput');
-      if (!input.value.trim()) return;
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+<script>
+  const { Engine, Render, World, Bodies, Body, Runner, Composite } = Matter;
 
-      const userMsg = document.createElement('div');
-      userMsg.className = 'message user';
-      userMsg.textContent = input.value;
-      chat.appendChild(userMsg);
-      chat.scrollTop = chat.scrollHeight;
-
-      setTimeout(() => {
-        const botMsg = document.createElement('div');
-        botMsg.className = 'message bot';
-        botMsg.textContent = "これは未来的チャットUIのサンプルです！";
-        chat.appendChild(botMsg);
-        chat.scrollTop = chat.scrollHeight;
-      }, 800);
-
-      input.value = '';
+  // エンジンとレンダー作成
+  const engine = Engine.create();
+  const render = Render.create({
+    element: document.body,
+    engine: engine,
+    options: {
+      width: window.innerWidth,
+      height: window.innerHeight,
+      wireframes: false,
+      background: 'transparent'
     }
-  </script>
+  });
+  Engine.run(engine);
+  Render.run(render);
+
+  // 画面端の壁
+  const walls = [
+    Bodies.rectangle(window.innerWidth/2, -10, window.innerWidth, 20, { isStatic: true }),
+    Bodies.rectangle(window.innerWidth/2, window.innerHeight+10, window.innerWidth, 20, { isStatic: true }),
+    Bodies.rectangle(-10, window.innerHeight/2, 20, window.innerHeight, { isStatic: true }),
+    Bodies.rectangle(window.innerWidth+10, window.innerHeight/2, 20, window.innerHeight, { isStatic: true })
+  ];
+  World.add(engine.world, walls);
+
+  // パーティクル背景
+  let particles = [];
+  function createParticles(num) {
+    particles.forEach(p => p.remove());
+    particles = [];
+    for(let i=0;i<num;i++){
+      const div = document.createElement('div');
+      div.className='particle';
+      div.style.position='absolute';
+      div.style.top=Math.random()*window.innerHeight+'px';
+      div.style.left=Math.random()*window.innerWidth+'px';
+      div.style.width=div.style.height=(Math.random()*3+2)+'px';
+      div.style.background='rgba(255,255,255,0.5)';
+      div.style.borderRadius='50%';
+      body.appendChild(div);
+      particles.push(div);
+    }
+  }
+  createParticles(80);
+
+  const msgBodies = [];
+  function sendMessage() {
+    const input = document.getElementById('userInput');
+    if(!input.value.trim()) return;
+
+    const speed = parseFloat(document.getElementById('msgSpeed').value);
+    const text = input.value;
+    const x = Math.random()*window.innerWidth;
+    const y = Math.random()*window.innerHeight/2;
+
+    // ユーザーメッセージ
+    const msgBody = Bodies.rectangle(x, y, text.length*12, 40, { restitution: 0.9, friction: 0.1 });
+    msgBody.render.fillStyle = '#ff6f61';
+    msgBody.render.strokeStyle = '#ff6f61';
+    msgBody.msgText = text;
+    World.add(engine.world, msgBody);
+    msgBodies.push(msgBody);
+
+    // ボットメッセージ
+    setTimeout(()=>{
+      const botText="Matter.js浮遊チャットUI！";
+      const botBody = Bodies.rectangle(Math.random()*window.innerWidth, Math.random()*window.innerHeight/2, botText.length*12, 40, { restitution:0.9, friction:0.1 });
+      botBody.render.fillStyle = '#6bc1ff';
+      botBody.render.strokeStyle = '#6bc1ff';
+      botBody.msgText = botText;
+      World.add(engine.world, botBody);
+      msgBodies.push(botBody);
+    },800);
+
+    input.value='';
+  }
+
+  // 描画カスタム
+  (function renderLoop() {
+    requestAnimationFrame(renderLoop);
+    // パーティクル動かす
+    particles.forEach(p=>{
+      let top=parseFloat(p.style.top);
+      top+=0.2; 
+      if(top>window.innerHeight) top=0;
+      p.style.top=top+'px';
+    });
+    // メッセージ描画
+    const ctx=render.context;
+    ctx.clearRect(0,0,window.innerWidth,window.innerHeight);
+    Composite.allBodies(engine.world).forEach(body=>{
+      if(body.msgText){
+        ctx.fillStyle = body.render.fillStyle || 'white';
+        ctx.fillRect(body.position.x - body.bounds.max.x + body.bounds.min.x, body.position.y - 20, body.bounds.max.x - body.bounds.min.x, 40);
+        ctx.fillStyle='white';
+        ctx.font='16px Arial';
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillText(body.msgText, body.position.x, body.position.y);
+      }
+    });
+  })();
+
+  function toggleSettings() {
+    const panel = document.getElementById('settingsPanel');
+    panel.style.display = panel.style.display==='block'?'none':'block';
+  }
+
+  document.getElementById('particleNum').addEventListener('input',(e)=>{
+    createParticles(e.target.value);
+  });
+
+  window.addEventListener('resize',()=>{
+    Render.lookAt(render, {
+      min: { x:0, y:0 },
+      max: { x:window.innerWidth, y:window.innerHeight }
+    });
+  });
+</script>
 </body>
 </html>
