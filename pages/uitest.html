@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>独創的チャットUI</title>
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(120deg, #1e3c72, #2a5298);
+    font-family: 'Arial', sans-serif;
+    overflow: hidden;
+  }
+
+  .chat-container {
+    position: relative;
+    width: 90%;
+    max-width: 600px;
+    height: 80%;
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 20px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .message {
+    max-width: 70%;
+    padding: 12px 18px;
+    border-radius: 20px;
+    color: white;
+    font-weight: bold;
+    position: relative;
+    animation: floatIn 0.5s ease forwards;
+  }
+
+  .user {
+    background: #ff6f61;
+    align-self: flex-end;
+    border-bottom-right-radius: 0;
+  }
+
+  .bot {
+    background: #6bc1ff;
+    align-self: flex-start;
+    border-bottom-left-radius: 0;
+  }
+
+  @keyframes floatIn {
+    0% { transform: translateY(20px); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+
+  .input-container {
+    position: fixed;
+    bottom: 20px;
+    display: flex;
+    width: 90%;
+    max-width: 600px;
+    gap: 10px;
+  }
+
+  .input-container input {
+    flex: 1;
+    padding: 12px 20px;
+    border-radius: 25px;
+    border: none;
+    outline: none;
+    font-size: 16px;
+  }
+
+  .input-container button {
+    padding: 12px 20px;
+    border-radius: 25px;
+    border: none;
+    background: #ff6f61;
+    color: white;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+
+  .input-container button:hover {
+    transform: scale(1.1);
+  }
+
+  /* 背景のゆっくり変化 */
+  @keyframes bgShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  body {
+    background: linear-gradient(120deg, #1e3c72, #2a5298, #1e3c72);
+    background-size: 600% 600%;
+    animation: bgShift 30s ease infinite;
+  }
+</style>
+</head>
+<body>
+  <div class="chat-container" id="chat">
+    <!-- メッセージがここに追加される -->
+  </div>
+
+  <div class="input-container">
+    <input type="text" id="userInput" placeholder="メッセージを入力..." />
+    <button onclick="sendMessage()">送信</button>
+  </div>
+
+  <script>
+    const chat = document.getElementById('chat');
+    function sendMessage() {
+      const input = document.getElementById('userInput');
+      if (!input.value.trim()) return;
+
+      const userMsg = document.createElement('div');
+      userMsg.className = 'message user';
+      userMsg.textContent = input.value;
+      chat.appendChild(userMsg);
+      chat.scrollTop = chat.scrollHeight;
+
+      setTimeout(() => {
+        const botMsg = document.createElement('div');
+        botMsg.className = 'message bot';
+        botMsg.textContent = "これは未来的チャットUIのサンプルです！";
+        chat.appendChild(botMsg);
+        chat.scrollTop = chat.scrollHeight;
+      }, 800);
+
+      input.value = '';
+    }
+  </script>
+</body>
+</html>
