@@ -1,596 +1,251 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GGUF Text-to-Text Engine with WebGPU</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+// WebLLMをインポート
+const webllm = await import("https://esm.run/@mlc-ai/web-llm");
+
+// DOM要素
+const statusEl = document.getElementById('status');
+const loadBtn = document.getElementById('load-btn');
+const userInput = document.getElementById('user-input');
+const sendBtn = document.getElementById('send-btn');
+const streamBtn = document.getElementById('stream-btn');
+const chatLog = document.getElementById('chat-log');
+
+// グローバル変数
+let engine = null;
+let isModelLoaded = false;
+
+// モデルをロードする関数
+async function loadModel() {
+    statusEl.textContent = "モデルをロード中...";
+    loadBtn.disabled = true;
+    
+    try {
+        // 使用するモデル
+        const selectedModel = "Qwen2.5-1.5B-Instruct-q4f32_1-MLC";
+        
+        // モデル設定
+        const appConfig = {
+            model_list: [
+                {
+                    model: "https://huggingface.co/mlc-ai/Qwen2.5-1.5B-Instruct-q4f32_1-MLC",
+                    model_id: selectedModel,
+                    model_lib:
+                        webllm.modelLibURLPrefix +
+                        webllm.modelVersion +
+                        "/Qwen2-1.5B-Instruct-q4f32_1-MLC-ctx4k_cs1k-webgpu.wasm",
+                },
+            ],
+        };
+
+        // モデルのロード
+        engine = await webllm.CreateMLCEngine(
+            selectedModel,
+            {
+                // ログ出力
+                initProgressCallback: (initProgress) => {
+                    statusEl.textContent = `ロード中... ${Math.round(initProgress.progress * 100)}% - ${initProgress.text || ""}`;
+                    console.log(initProgress);
+                },
+                logLevel: "INFO",
+            },
+            appConfig
+        );
+        
+        // ロード完了
+        statusEl.textContent = `モデル「${selectedModel}」が正常にロードされました`;
+        isModelLoaded = true;
+        
+        // 入力を有効化
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        streamBtn.disabled = false;
+        
+        // システムメッセージ
+        addSystemMessage("モデルのロードが完了しました。メッセージを入力してください。");
+        
+    } catch (error) {
+        console.error("モデルのロードに失敗:", error);
+        statusEl.textContent = `モデルのロードに失敗しました: ${error.message}`;
+        loadBtn.disabled = false;
+    }
+}
+
+// 通常のテキスト生成（非ストリーミング）
+async function generateText() {
+    if (!isModelLoaded) return;
+    
+    const message = userInput.value.trim();
+    if (message === "") return;
+    
+    // ユーザーメッセージの表示
+    addUserMessage(message);
+    userInput.value = "";
+    
+    // 入力を無効化
+    userInput.disabled = true;
+    sendBtn.disabled = true;
+    streamBtn.disabled = true;
+    
+    try {
+        // 生成開始
+        const startTime = performance.now();
+        
+        // AIモデルに問い合わせ
+        const reply = await engine.chat.completions.create({
+            messages: [
+                { role: "system", content: "You are a helpful AI assistant." },
+                { role: "user", content: message }
+            ],
+        });
+        
+        // 応答時間の計算
+        const endTime = performance.now();
+        const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+        
+        // 結果の表示
+        const content = reply.choices[0].message.content;
+        addAIMessage(content);
+        
+        // システムメッセージで時間を表示
+        addSystemMessage(`応答時間: ${timeTaken}秒`);
+        
+    } catch (error) {
+        console.error("テキスト生成に失敗:", error);
+        addSystemMessage(`エラー: ${error.message}`);
+    } finally {
+        // 入力を再度有効化
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        streamBtn.disabled = false;
+    }
+}
+
+// ストリーミングテキスト生成
+async function generateStreamingText() {
+    if (!isModelLoaded) return;
+    
+    const message = userInput.value.trim();
+    if (message === "") return;
+    
+    // ユーザーメッセージの表示
+    addUserMessage(message);
+    userInput.value = "";
+    
+    // 入力を無効化
+    userInput.disabled = true;
+    sendBtn.disabled = true;
+    streamBtn.disabled = true;
+    
+    try {
+        // AIメッセージの追加（空）
+        const aiMessageEl = document.createElement('div');
+        aiMessageEl.className = 'ai-message';
+        const aiSpan = document.createElement('span');
+        aiMessageEl.appendChild(aiSpan);
+        chatLog.appendChild(aiMessageEl);
+        
+        // 生成開始
+        const startTime = performance.now();
+        
+        // ストリーミング生成
+        const chunks = await engine.chat.completions.create({
+            messages: [
+                { role: "system", content: "You are a helpful AI assistant." },
+                { role: "user", content: message }
+            ],
+            temperature: 1,
+            stream: true,
+            stream_options: { include_usage: true },
+        });
+        
+        let fullResponse = '';
+        
+        // ストリーミングで返されるチャンクを処理
+        for await (const chunk of chunks) {
+            const content = chunk.choices[0] ? chunk.choices[0].delta.content : "";
+            fullResponse += content;
+            aiSpan.textContent = fullResponse;
+            
+            // 自動スクロール
+            chatLog.scrollTop = chatLog.scrollHeight;
         }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 1400px;
-            width: 100%;
-            padding: 30px;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-            border-bottom: 2px solid #f0f0f0;
-            padding-bottom: 20px;
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 5px;
-            font-size: 28px;
-        }
-
-        .subtitle {
-            color: #666;
-            font-size: 14px;
-        }
-
-        .main-grid {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            gap: 30px;
-            margin-bottom: 30px;
-        }
-
-        .panel {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 20px;
-            border: 1px solid #e0e0e0;
-        }
-
-        .panel-title {
-            font-size: 16px;
-            font-weight: 600;
-            color: #333;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #667eea;
-        }
-
-        .panel-title::before {
-            content: '';
-            width: 4px;
-            height: 18px;
-            background: #667eea;
-            border-radius: 2px;
-            margin-right: 10px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-weight: 500;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        input[type="file"],
-        input[type="text"],
-        input[type="number"],
-        select,
-        textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 13px;
-            font-family: 'Segoe UI', sans-serif;
-            transition: all 0.3s;
-        }
-
-        textarea {
-            resize: vertical;
-            min-height: 80px;
-            font-family: 'Courier New', monospace;
-        }
-
-        input[type="text"]:focus,
-        input[type="number"]:focus,
-        select:focus,
-        textarea:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-
-        button {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-        }
-
-        .btn-secondary {
-            background: #e0e0e0;
-            color: #333;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-            background: #d0d0d0;
-        }
-
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .status-box {
-            background: white;
-            border-left: 4px solid #667eea;
-            padding: 12px;
-            border-radius: 4px;
-            margin-top: 15px;
-            font-size: 12px;
-            color: #555;
-            min-height: 50px;
-            overflow-y: auto;
-            max-height: 120px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .status-box.success {
-            border-left-color: #4caf50;
-            background-color: #f1f8f6;
-            color: #2e7d32;
-        }
-
-        .status-box.error {
-            border-left-color: #f44336;
-            background-color: #fef5f5;
-            color: #c62828;
-        }
-
-        .status-box.info {
-            border-left-color: #2196f3;
-            background-color: #f0f7ff;
-            color: #1565c0;
-        }
-
-        .status-box.warning {
-            border-left-color: #ff9800;
-            background-color: #fff3e0;
-            color: #e65100;
-        }
-
-        .chat-container {
-            display: flex;
-            flex-direction: column;
-            height: 600px;
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            overflow: hidden;
-        }
-
-        .chat-messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            background: #fafafa;
-        }
-
-        .message {
-            margin-bottom: 15px;
-            display: flex;
-            gap: 10px;
-            animation: slideIn 0.3s ease-out;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .message.user {
-            justify-content: flex-end;
-        }
-
-        .message.assistant {
-            justify-content: flex-start;
-        }
-
-        .message-content {
-            max-width: 70%;
-            padding: 12px;
-            border-radius: 8px;
-            font-size: 13px;
-            line-height: 1.5;
-        }
-
-        .message.user .message-content {
-            background: #667eea;
-            color: white;
-            border-bottom-right-radius: 2px;
-        }
-
-        .message.assistant .message-content {
-            background: #e0e0e0;
-            color: #333;
-            border-bottom-left-radius: 2px;
-        }
-
-        .message.system .message-content {
-            background: #f0f7ff;
-            color: #1565c0;
-            font-size: 12px;
-            width: 100%;
-            text-align: center;
-        }
-
-        .chat-input-area {
-            padding: 15px;
-            background: white;
-            border-top: 1px solid #e0e0e0;
-            display: flex;
-            gap: 10px;
-        }
-
-        .chat-input-area input {
-            flex: 1;
-        }
-
-        .chat-input-area button {
-            width: 100px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 10px;
-            margin-top: 15px;
-        }
-
-        .stat-item {
-            background: white;
-            padding: 12px;
-            border-radius: 4px;
-            border-left: 3px solid #667eea;
-        }
-
-        .stat-label {
-            font-size: 11px;
-            color: #999;
-            margin-bottom: 3px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .stat-value {
-            font-size: 14px;
-            font-weight: 600;
-            color: #333;
-            font-family: 'Courier New', monospace;
-        }
-
-        .gpu-status {
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 15px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .gpu-status.supported {
-            background: #e8f5e9;
-            color: #2e7d32;
-            border-left: 3px solid #4caf50;
-        }
-
-        .gpu-status.unsupported {
-            background: #ffebee;
-            color: #c62828;
-            border-left: 3px solid #f44336;
-        }
-
-        .model-info {
-            background: white;
-            border: 1px solid #e0e0e0;
-            border-radius: 4px;
-            padding: 12px;
-            margin-bottom: 15px;
-            font-size: 12px;
-        }
-
-        .model-info-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 5px 0;
-            border-bottom: 1px solid #f0f0f0;
-        }
-
-        .model-info-row:last-child {
-            border-bottom: none;
-        }
-
-        .model-info-label {
-            color: #999;
-            font-weight: 500;
-        }
-
-        .model-info-value {
-            color: #333;
-            font-family: 'Courier New', monospace;
-            font-weight: 600;
-        }
-
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        input[type="range"] {
-            flex: 1;
-            height: 6px;
-            border-radius: 3px;
-            background: #ddd;
-            outline: none;
-            -webkit-appearance: none;
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #667eea;
-            cursor: pointer;
-        }
-
-        input[type="range"]::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: #667eea;
-            cursor: pointer;
-            border: none;
-        }
-
-        .slider-value {
-            min-width: 45px;
-            text-align: right;
-            font-weight: 600;
-            color: #667eea;
-            font-size: 12px;
-        }
-
-        .loading-spinner {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border: 2px solid #f3f3f3;
-            border-top: 2px solid #667eea;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin-right: 5px;
-            vertical-align: middle;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .advanced-options {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #ddd;
-        }
-
-        .advanced-options-title {
-            font-size: 12px;
-            font-weight: 600;
-            color: #667eea;
-            margin-bottom: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        @media (max-width: 1024px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>🤖 GGUF Text-to-Text Engine</h1>
-            <p class="subtitle">WebGPU AI Accelerator対応 - LLM推論プラットフォーム</p>
-        </div>
-
-        <div class="main-grid">
-            <!-- Control Panel -->
-            <div>
-                <div class="panel">
-                    <div class="panel-title">⚙️ モデル設定</div>
-
-                    <div class="gpu-status" id="gpuStatus">
-                        <span class="loading-spinner"></span>
-                        <span id="gpuStatusText">チェック中...</span>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="modelFile">GGUFモデルファイル</label>
-                        <input type="file" id="modelFile" accept=".gguf" />
-                    </div>
-
-                    <div class="model-info" id="modelInfo" style="display: none;">
-                        <div class="model-info-row">
-                            <span class="model-info-label">ファイルサイズ</span>
-                            <span class="model-info-value" id="infoSize">-</span>
-                        </div>
-                        <div class="model-info-row">
-                            <span class="model-info-label">層数</span>
-                            <span class="model-info-value" id="infoLayers">-</span>
-                        </div>
-                        <div class="model-info-row">
-                            <span class="model-info-label">コンテキスト</span>
-                            <span class="model-info-value" id="infoContext">-</span>
-                        </div>
-                        <div class="model-info-row">
-                            <span class="model-info-label">パラメータ</span>
-                            <span class="model-info-value" id="infoParams">-</span>
-                        </div>
-                    </div>
-
-                    <div class="advanced-options">
-                        <div class="advanced-options-title">生成設定</div>
-
-                        <div class="form-group">
-                            <label>Temperature</label>
-                            <div class="slider-container">
-                                <input type="range" id="temperature" min="0" max="200" value="70" step="1" />
-                                <span class="slider-value" id="tempValue">0.70</span>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Top P</label>
-                            <div class="slider-container">
-                                <input type="range" id="topP" min="0" max="100" value="90" step="1" />
-                                <span class="slider-value" id="topPValue">0.90</span>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label>Top K</label>
-                            <div class="slider-container">
-                                <input type="range" id="topK" min="0" max="100" value="40" step="1" />
-                                <span class="slider-value" id="topKValue">40</span>
-                            </div>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="maxTokens">最大トークン数</label>
-                            <input type="number" id="maxTokens" min="1" max="4096" value="512" />
-                        </div>
-                    </div>
-
-                    <div class="button-group" style="margin-top: 20px;">
-                        <button class="btn-secondary" id="resetBtn">リセット</button>
-                    </div>
-
-                    <div class="status-box info" id="statusBox">
-                        モデルを選択してください
-                    </div>
-                </div>
-
-                <!-- Statistics -->
-                <div class="panel" style="margin-top: 20px;">
-                    <div class="panel-title">📊 推論統計</div>
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <div class="stat-label">処理時間</div>
-                            <div class="stat-value" id="inferenceTime">-</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">トークン速度</div>
-                            <div class="stat-value" id="tokenSpeed">-</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">生成トークン</div>
-                            <div class="stat-value" id="tokenCount">-</div>
-                        </div>
-                        <div class="stat-item">
-                            <div class="stat-label">GPU利用率</div>
-                            <div class="stat-value" id="gpuUsage">-</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Chat Interface -->
-            <div>
-                <div class="panel" style="padding: 0; display: flex; flex-direction: column; height: 650px;">
-                    <div style="padding: 20px; border-bottom: 1px solid #e0e0e0;">
-                        <div class="panel-title">💬 テキスト推論</div>
-                    </div>
-
-                    <div class="chat-messages" id="chatMessages">
-                        <div class="message system">
-                            <div class="message-content">
-                                モデルを選択してから入力してください
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="chat-input-area">
-                        <textarea id="userInput" placeholder="入力テキスト..." style="resize: none; min-height: 50px; max-height: 80px;"></textarea>
-                        <button class="btn-primary" id="generateBtn" disabled style="width: 100px; align-self: flex-end;">
-                            生成
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="gguf-engine.js"></script>
-</body>
-</html>
+        
+        // 応答時間の計算
+        const endTime = performance.now();
+        const timeTaken = ((endTime - startTime) / 1000).toFixed(2);
+        
+        // システムメッセージで時間を表示
+        addSystemMessage(`応答時間: ${timeTaken}秒`);
+        
+    } catch (error) {
+        console.error("ストリーミング生成に失敗:", error);
+        addSystemMessage(`エラー: ${error.message}`);
+    } finally {
+        // 入力を再度有効化
+        userInput.disabled = false;
+        sendBtn.disabled = false;
+        streamBtn.disabled = false;
+    }
+}
+
+// ユーザーメッセージを追加
+function addUserMessage(text) {
+    const messageEl = document.createElement('div');
+    messageEl.className = 'user-message';
+    
+    const span = document.createElement('span');
+    span.textContent = text;
+    
+    messageEl.appendChild(span);
+    chatLog.appendChild(messageEl);
+    chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// AIメッセージを追加
+function addAIMessage(text) {
+    const messageEl = document.createElement('div');
+    messageEl.className = 'ai-message';
+    
+    const span = document.createElement('span');
+    span.textContent = text;
+    
+    messageEl.appendChild(span);
+    chatLog.appendChild(messageEl);
+    chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// システムメッセージを追加
+function addSystemMessage(text) {
+    const messageEl = document.createElement('div');
+    messageEl.className = 'system-message';
+    messageEl.textContent = text;
+    
+    chatLog.appendChild(messageEl);
+    chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+// イベントリスナーの設定
+loadBtn.addEventListener('click', loadModel);
+sendBtn.addEventListener('click', generateText);
+streamBtn.addEventListener('click', generateStreamingText);
+
+// Enterキーでの送信（日本語入力の確定を考慮）
+let isComposing = false;
+
+// IME入力開始時
+userInput.addEventListener('compositionstart', () => {
+    isComposing = true;
+});
+
+// IME入力完了時
+userInput.addEventListener('compositionend', () => {
+    isComposing = false;
+});
+
+// キー入力時
+userInput.addEventListener('keydown', (e) => {
+    // isComposingがtrueの場合は日本語変換中なので処理をスキップ
+    if (e.key === 'Enter' && !e.shiftKey && !isComposing) {
+        e.preventDefault();
+        generateText();
+    }
+});
