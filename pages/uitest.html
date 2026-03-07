@@ -1,217 +1,136 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Matter.js 浮遊チャットUI</title>
-<style>
-  body {
-    margin: 0;
-    overflow: hidden;
-    background: radial-gradient(circle at center, #0f2027, #203a43, #2c5364);
-    font-family: Arial, sans-serif;
-  }
-  canvas { display: block; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>シンプルチャットUI</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f2f5;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
 
-  .input-container {
-    position: absolute;
-    bottom: 30px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 10px;
-    background: rgba(255,255,255,0.1);
-    padding: 10px 20px;
-    border-radius: 30px;
-    backdrop-filter: blur(10px);
-    z-index: 10;
-  }
-  .input-container input {
-    border: none;
-    outline: none;
-    padding: 10px 15px;
-    border-radius: 20px;
-    font-size: 16px;
-  }
-  .input-container button {
-    border: none;
-    border-radius: 20px;
-    padding: 10px 20px;
-    background: #ff6f61;
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-  }
+    .chat-container {
+      width: 400px;
+      height: 600px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
 
-  .settings-btn {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background: rgba(255,255,255,0.2);
-    border: none;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    cursor: pointer;
-    font-size: 20px;
-    color: white;
-    z-index: 10;
-  }
+    .chat-header {
+      padding: 15px;
+      background-color: #007bff;
+      color: white;
+      font-weight: bold;
+      text-align: center;
+    }
 
-  .settings-panel {
-    position: absolute;
-    top: 70px;
-    right: 20px;
-    width: 250px;
-    background: rgba(0,0,0,0.7);
-    padding: 15px;
-    border-radius: 15px;
-    display: none;
-    color: white;
-    z-index: 10;
-  }
+    .chat-messages {
+      flex: 1;
+      padding: 15px;
+      overflow-y: auto;
+      background-color: #f7f7f7;
+    }
 
-  .settings-panel label {
-    display: block;
-    margin-top: 10px;
-    font-size: 14px;
-  }
-  .settings-panel input[type="range"] { width: 100%; }
-</style>
+    .message {
+      margin-bottom: 10px;
+      max-width: 70%;
+      padding: 10px;
+      border-radius: 10px;
+      clear: both;
+    }
+
+    .message.user {
+      background-color: #007bff;
+      color: white;
+      margin-left: auto;
+      text-align: right;
+    }
+
+    .message.bot {
+      background-color: #e4e6eb;
+      color: black;
+      margin-right: auto;
+      text-align: left;
+    }
+
+    .chat-input {
+      display: flex;
+      padding: 10px;
+      border-top: 1px solid #ddd;
+      background-color: #fff;
+    }
+
+    .chat-input input {
+      flex: 1;
+      padding: 10px;
+      border-radius: 20px;
+      border: 1px solid #ddd;
+      outline: none;
+    }
+
+    .chat-input button {
+      margin-left: 10px;
+      padding: 10px 15px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+
+    .chat-input button:hover {
+      background-color: #0056b3;
+    }
+  </style>
 </head>
 <body>
-<button class="settings-btn" onclick="toggleSettings()">⚙️</button>
-<div class="settings-panel" id="settingsPanel">
-  <label>メッセージ速度: <input type="range" id="msgSpeed" min="0.1" max="1.5" step="0.05" value="0.5"></label>
-  <label>パーティクル数: <input type="range" id="particleNum" min="10" max="200" value="80"></label>
-</div>
+  <div class="chat-container">
+    <div class="chat-header">チャット</div>
+    <div class="chat-messages" id="chatMessages">
+      <div class="message bot">こんにちは！</div>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="messageInput" placeholder="メッセージを入力...">
+      <button id="sendBtn">送信</button>
+    </div>
+  </div>
 
-<div class="input-container">
-  <input type="text" id="userInput" placeholder="メッセージを入力..." />
-  <button onclick="sendMessage()">送信</button>
-</div>
+  <script>
+    const sendBtn = document.getElementById('sendBtn');
+    const messageInput = document.getElementById('messageInput');
+    const chatMessages = document.getElementById('chatMessages');
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
-<script>
-  const { Engine, Render, World, Bodies, Body, Runner, Composite } = Matter;
-
-  // エンジンとレンダー作成
-  const engine = Engine.create();
-  const render = Render.create({
-    element: document.body,
-    engine: engine,
-    options: {
-      width: window.innerWidth,
-      height: window.innerHeight,
-      wireframes: false,
-      background: 'transparent'
+    function appendMessage(text, sender) {
+      const messageDiv = document.createElement('div');
+      messageDiv.classList.add('message', sender);
+      messageDiv.textContent = text;
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
     }
-  });
-  Engine.run(engine);
-  Render.run(render);
 
-  // 画面端の壁
-  const walls = [
-    Bodies.rectangle(window.innerWidth/2, -10, window.innerWidth, 20, { isStatic: true }),
-    Bodies.rectangle(window.innerWidth/2, window.innerHeight+10, window.innerWidth, 20, { isStatic: true }),
-    Bodies.rectangle(-10, window.innerHeight/2, 20, window.innerHeight, { isStatic: true }),
-    Bodies.rectangle(window.innerWidth+10, window.innerHeight/2, 20, window.innerHeight, { isStatic: true })
-  ];
-  World.add(engine.world, walls);
-
-  // パーティクル背景
-  let particles = [];
-  function createParticles(num) {
-    particles.forEach(p => p.remove());
-    particles = [];
-    for(let i=0;i<num;i++){
-      const div = document.createElement('div');
-      div.className='particle';
-      div.style.position='absolute';
-      div.style.top=Math.random()*window.innerHeight+'px';
-      div.style.left=Math.random()*window.innerWidth+'px';
-      div.style.width=div.style.height=(Math.random()*3+2)+'px';
-      div.style.background='rgba(255,255,255,0.5)';
-      div.style.borderRadius='50%';
-      body.appendChild(div);
-      particles.push(div);
-    }
-  }
-  createParticles(80);
-
-  const msgBodies = [];
-  function sendMessage() {
-    const input = document.getElementById('userInput');
-    if(!input.value.trim()) return;
-
-    const speed = parseFloat(document.getElementById('msgSpeed').value);
-    const text = input.value;
-    const x = Math.random()*window.innerWidth;
-    const y = Math.random()*window.innerHeight/2;
-
-    // ユーザーメッセージ
-    const msgBody = Bodies.rectangle(x, y, text.length*12, 40, { restitution: 0.9, friction: 0.1 });
-    msgBody.render.fillStyle = '#ff6f61';
-    msgBody.render.strokeStyle = '#ff6f61';
-    msgBody.msgText = text;
-    World.add(engine.world, msgBody);
-    msgBodies.push(msgBody);
-
-    // ボットメッセージ
-    setTimeout(()=>{
-      const botText="Matter.js浮遊チャットUI！";
-      const botBody = Bodies.rectangle(Math.random()*window.innerWidth, Math.random()*window.innerHeight/2, botText.length*12, 40, { restitution:0.9, friction:0.1 });
-      botBody.render.fillStyle = '#6bc1ff';
-      botBody.render.strokeStyle = '#6bc1ff';
-      botBody.msgText = botText;
-      World.add(engine.world, botBody);
-      msgBodies.push(botBody);
-    },800);
-
-    input.value='';
-  }
-
-  // 描画カスタム
-  (function renderLoop() {
-    requestAnimationFrame(renderLoop);
-    // パーティクル動かす
-    particles.forEach(p=>{
-      let top=parseFloat(p.style.top);
-      top+=0.2; 
-      if(top>window.innerHeight) top=0;
-      p.style.top=top+'px';
-    });
-    // メッセージ描画
-    const ctx=render.context;
-    ctx.clearRect(0,0,window.innerWidth,window.innerHeight);
-    Composite.allBodies(engine.world).forEach(body=>{
-      if(body.msgText){
-        ctx.fillStyle = body.render.fillStyle || 'white';
-        ctx.fillRect(body.position.x - body.bounds.max.x + body.bounds.min.x, body.position.y - 20, body.bounds.max.x - body.bounds.min.x, 40);
-        ctx.fillStyle='white';
-        ctx.font='16px Arial';
-        ctx.textAlign='center';
-        ctx.textBaseline='middle';
-        ctx.fillText(body.msgText, body.position.x, body.position.y);
+    sendBtn.addEventListener('click', () => {
+      const text = messageInput.value.trim();
+      if(text) {
+        appendMessage(text, 'user');
+        messageInput.value = '';
+        // ここでボットの応答を追加（例）
+        setTimeout(() => appendMessage('応答: ' + text, 'bot'), 500);
       }
     });
-  })();
 
-  function toggleSettings() {
-    const panel = document.getElementById('settingsPanel');
-    panel.style.display = panel.style.display==='block'?'none':'block';
-  }
-
-  document.getElementById('particleNum').addEventListener('input',(e)=>{
-    createParticles(e.target.value);
-  });
-
-  window.addEventListener('resize',()=>{
-    Render.lookAt(render, {
-      min: { x:0, y:0 },
-      max: { x:window.innerWidth, y:window.innerHeight }
+    messageInput.addEventListener('keypress', (e) => {
+      if(e.key === 'Enter') sendBtn.click();
     });
-  });
-</script>
+  </script>
 </body>
 </html>
