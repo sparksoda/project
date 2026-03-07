@@ -3,8 +3,9 @@
 | Date       | Project Name | Version      | Status | Comments    |
 | ---        | ---          | ---          | ---    | ---         |
 | 2026/03/06 | Project Soda | start        | OK     | no comments |
-| 2026/03/07 | Soda chat    | test release | Plan   | no comments |
+| 2026/03/07 | Soda chat/UI | test release | OK     | no comments |
 | 2026/03/08 | Soda SLM     | test release | Plan   | no comments |
+| 2026/03/08 | Soda UI(Phy) | test release | Plan   | build in matter.min.js |
 
 pages/chat.html\
 this is Stable version UI.
