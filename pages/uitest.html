@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>炭酸の泡アニメーション（ランダム透明度）</title>
+<title>炭酸の泡アニメーション（大きさ・透明度・浮力連動）</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
 <style>
   body {
@@ -46,8 +46,12 @@
   Runner.run(runner, engine);
 
   function createBubble() {
-    const radius = 5 + Math.random() * 15;
-    const opacity = 0.3 + Math.random() * 0.7; // ランダムな透明度 0.3~1.0
+    const radius = 5 + Math.random() * 15; // 大きさ
+    // 大きさに応じて透明度を設定（大きいほど濃く）
+    const opacity = 0.3 + (radius - 5) / 15 * 0.7;
+    // 大きさに応じて浮力を設定（大きいほど速く上昇）
+    const buoyancy = 0.0003 + (radius - 5) / 15 * 0.0007;
+
     const bubble = Bodies.circle(
       Math.random() * window.innerWidth,
       window.innerHeight + radius,
@@ -57,9 +61,12 @@
         frictionAir: 0.02,
         render: {
           fillStyle: `rgba(255,255,255,${opacity})`
-        }
+        },
+        // buoyancy をカスタムプロパティとして保持
+        custom: { buoyancy: buoyancy }
       }
     );
+
     World.add(world, bubble);
     return bubble;
   }
@@ -73,7 +80,10 @@
 
   Matter.Events.on(engine, 'beforeUpdate', () => {
     bubbles.forEach((bubble) => {
-      Body.applyForce(bubble, bubble.position, { x: 0, y: -0.0005 });
+      // custom.buoyancy に応じて上方向に力を加える
+      Body.applyForce(bubble, bubble.position, { x: 0, y: -bubble.custom.buoyancy });
+
+      // 画面上に出たら下に戻す
       if (bubble.position.y + bubble.circleRadius < 0) {
         Body.setPosition(bubble, { x: Math.random() * window.innerWidth, y: window.innerHeight + bubble.circleRadius });
         Body.setVelocity(bubble, { x: 0, y: 0 });
