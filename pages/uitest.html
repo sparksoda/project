@@ -102,9 +102,10 @@ input{
 <p>パスワードを入力してください:</p>
 <input type="password" id="passwordInput"><br>
 <button id="unlockBtn">確認</button>
-<div id="error">パスワードが違います。</div>
+<div id="error">パスワードが違います。初期設定:1234</div>
 </div>
 
+<script>
 <script>
 const signin = document.getElementById("signin");
 const main = document.getElementById("main");
@@ -116,14 +117,21 @@ const unlockBtn = document.getElementById("unlockBtn");
 const error = document.getElementById("error");
 const resumePasswordInput = document.getElementById("resumePassword");
 
-// 初期復帰用パスワードを1234に設定
-let resumePassword = "1234";
+// localStorageから復帰用パスワードを取得
+let resumePassword = localStorage.getItem("resumePassword") || "1234";
+
+// ページロード時、既に保存されたパスワードがあれば入力欄に表示（任意）
+if(localStorage.getItem("resumePassword")){
+  resumePasswordInput.value = resumePassword;
+}
 
 // サインイン→メインへの移動
 nextBtn.onclick = () => {
-  // ユーザーが入力した場合は上書き
-  if(resumePasswordInput.value.trim() !== ""){
-    resumePassword = resumePasswordInput.value;
+  const newPass = resumePasswordInput.value.trim();
+  if(newPass !== ""){
+    resumePassword = newPass;
+    // localStorageに保存
+    localStorage.setItem("resumePassword", resumePassword);
   }
   signin.classList.remove("show");
   setTimeout(()=>{
@@ -160,6 +168,7 @@ document.addEventListener("visibilitychange", function(){
     showOverlay();
   }
 });
+</script>
 </script>
 
 <script src="bubbles.js"></script>
