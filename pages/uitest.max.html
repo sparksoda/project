@@ -50,7 +50,7 @@
     // 大きさに応じて透明度を設定（大きいほど濃く）
     const opacity = 0.3 + (radius - 5) / 15 * 0.7;
     // 大きさに応じて浮力を設定（大きいほど速く上昇）
-    const buoyancy = 0.0003 + (radius - 5) / 15 * 0.0007;
+    const buoyancy = 0.0004 + (radius - 5) / 15 * 0.0007;
 
     const bubble = Bodies.circle(
       Math.random() * window.innerWidth,
