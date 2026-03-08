@@ -10,14 +10,32 @@
     height: 100vh;
     background: linear-gradient(to top, #1E3C72, #2A5298);
     overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
   }
 
   canvas {
     display: block;
   }
+
+  /* 中央のテキスト用 */
+  #center-text {
+    position: absolute;
+    z-index: 10; /* canvasより前面に表示 */
+    color: white;
+    font-size: 3em;
+    font-family: sans-serif;
+    text-align: center;
+  }
 </style>
 </head>
 <body>
+
+<div id="center-text">
+  <h1>hello</h1>
+</div>
 
 <script src="bubbles.js"></script>
 
