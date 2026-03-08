@@ -115,7 +115,7 @@ Events.on(engine,"beforeUpdate",()=>{
 
   // Bubble: 天井まで浮上して止まる
   bubbles.forEach(bubble=>{
-    Body.applyForce(bubble,bubble.position,{x:0,y:-bubble.custom.buoyancy});
+    Body.applyForce(bubble,bubble.position,{x:0,y:bubble.custom.buoyancy});
 
     if(bubble.position.y - bubble.circleRadius < 0){
       Body.setPosition(bubble,{
