@@ -1,98 +1,23 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sodallm - ondevice LLM Worker</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        #status {
-            margin: 10px 0;
-            padding: 10px;
-            background-color: #f0f0f0;
-            border-radius: 5px;
-        }
-        #chat-container {
-            margin-top: 20px;
-        }
-        #chat-log {
-            border: 1px solid #ddd;
-            padding: 10px;
-            height: 300px;
-            overflow-y: auto;
-            margin-bottom: 10px;
-            border-radius: 5px;
-        }
-        #user-input {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-            margin-bottom: 10px;
-        }
-        .btn {
-            padding: 8px 16px;
-            background-color: #4285f4;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        .btn:disabled {
-            background-color: #cccccc;
-        }
-        .user-message {
-            margin-bottom: 8px;
-            text-align: right;
-        }
-        .user-message span {
-            background-color: #4285f4;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            display: inline-block;
-            max-width: 80%;
-        }
-        .ai-message {
-            margin-bottom: 8px;
-            text-align: left;
-        }
-        .ai-message span {
-            background-color: #f1f1f1;
-            padding: 8px 12px;
-            border-radius: 20px;
-            display: inline-block;
-            max-width: 80%;
-        }
-        .system-message {
-            margin: 10px 0;
-            color: #666;
-            font-style: italic;
-            text-align: center;
-        }
-    </style>
-</head>
-<body>
-    <h1>dev beta project</h1>
-    <p>ブラウザでLLMを動かすシンプルなプロジェクトです。</p>
-    
-    <div id="status">モデルがロードされていません</div>
-    
-    <button id="load-btn" class="btn">モデルをロード</button>
-    
-    <div id="chat-container">
-        <div id="chat-log">
-            <div class="system-message">モデルをロードして会話を始めましょう</div>
-        </div>
-        <textarea id="user-input" placeholder="メッセージを入力..." rows="3" disabled></textarea>
-        <button id="send-btn" class="btn" disabled>送信</button>
-        <button id="stream-btn" class="btn" disabled>ストリーミング送信</button>
-    </div>
+<!doctype html>
+<html>
+  <script>
+    webLLMGlobal = {};
+  </script>
+  <body>
+    <h2>WebLLM Test Page</h2>
+    Open console to see output
+    <br />
+    <br />
+    <label id="init-label"> </label>
 
-    <script type="module" src="index.js"></script>
-</body>
+    <h3>Prompt</h3>
+    <label id="prompt-label"> </label>
+
+    <h3>Response</h3>
+    <label id="generate-label"> </label>
+    <br />
+    <label id="stats-label"> </label>
+
+    <script type="module" src="./get_started.ts"></script>
+  </body>
 </html>
