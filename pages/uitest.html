@@ -3,102 +3,108 @@
 <head>
 <meta charset="UTF-8">
 <title>テストページ</title>
-<script src="matter.min.js"></script>
+
 <style>
-  body {
-    margin: 0;
-    height: 100vh;
-    background: linear-gradient(to top, #1E3C72, #2A5298);
-    overflow: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-  }
 
-  canvas {
-    display: block;
-  }
+body{
+  margin:0;
+  height:100vh;
+  background: linear-gradient(to top,#1E3C72,#2A5298);
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  overflow:hidden;
+}
 
-  /* 共通ウィンドウスタイル */
-  .window {
-    position: absolute;
-    z-index: 10;
-    color: white;
-    font-family: sans-serif;
-    text-align: center;
-    background: rgba(255,255,255,0.08);
-    backdrop-filter: blur(15px) saturate(1.2);
-    border: 2px solid rgba(255, 255, 255, 0.25);
-    border-radius: 24px;
-    padding: 40px 60px;
-    opacity: 0; /* 初期は非表示 */
-    transition: opacity 1s ease; /* フェード用 */
-  }
+/* 共通ウィンドウ */
+.window{
+  position:absolute;
+  color:white;
+  font-family:sans-serif;
+  text-align:center;
 
-  /* 小さいサインインウィンドウ */
-  #signin {
-    width: 300px;
-    height: 200px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    opacity: 1; /* 初期は表示 */
-  }
+  background:rgba(255,255,255,0.08);
+  backdrop-filter:blur(15px);
 
-  /* 大きなメインウィンドウ */
-  #main {
-    width: 75%;
-    height: 75%;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-  }
+  border:2px solid rgba(255,255,255,0.25);
+  border-radius:24px;
 
-  button {
-    margin-top: 20px;
-    padding: 10px 20px;
-    font-size: 16px;
-    border: none;
-    border-radius: 12px;
-    cursor: pointer;
-    background-color: rgba(255,255,255,0.2);
-    color: white;
-    backdrop-filter: blur(10px);
-  }
+  padding:40px;
+
+  opacity:0;
+  pointer-events:none;
+
+  transition:opacity 1s;
+}
+
+/* 表示状態 */
+.show{
+  opacity:1;
+  pointer-events:auto;
+}
+
+/* サインイン */
+#signin{
+  width:300px;
+  height:220px;
+}
+
+/* メインウィンドウ */
+#main{
+  width:75%;
+  height:75%;
+}
+
+button{
+  margin-top:20px;
+  padding:10px 20px;
+  border:none;
+  border-radius:10px;
+  cursor:pointer;
+}
 
 </style>
 </head>
 <body>
 
-<!-- 小さなサインインウィンドウ -->
-<div id="signin" class="window">
-  <h2>サインイン</h2>
-  <input type="text" placeholder="ユーザー名"><br><br>
-  <input type="password" placeholder="パスワード"><br><br>
-  <button id="nextBtn">次に進む</button>
+<!-- サインイン -->
+<div id="signin" class="window show">
+
+<h2>サインイン</h2>
+
+<input placeholder="ユーザー名"><br><br>
+<input type="password" placeholder="パスワード"><br>
+
+<button id="nextBtn">次に進む</button>
+
 </div>
 
-<!-- 大きなメインウィンドウ -->
+<!-- メイン -->
 <div id="main" class="window">
-  <h1>hello</h1>
+
+<h1>hello</h1>
+
 </div>
 
-<script src="bubbles.js"></script>
-<script>
-  const signin = document.getElementById('signin');
-  const main = document.getElementById('main');
-  const nextBtn = document.getElementById('nextBtn');
 
-  nextBtn.addEventListener('click', () => {
-    // サインインをフェードアウト
-    signin.style.opacity = 0;
-    setTimeout(() => {
-      signin.style.display = 'none'; // 完全に消す
-      // メインウィンドウをフェードイン
-      main.style.opacity = 1;
-    }, 1000); // CSSのtransitionと同期
-  });
+<script>
+
+const signin = document.getElementById("signin");
+const main = document.getElementById("main");
+const nextBtn = document.getElementById("nextBtn");
+
+nextBtn.onclick = () => {
+
+  // サインイン消す
+  signin.classList.remove("show");
+
+  // 少し待ってから表示
+  setTimeout(()=>{
+    main.classList.add("show");
+  },1000);
+
+};
+
 </script>
 
 </body>
