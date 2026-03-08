@@ -142,7 +142,7 @@ Events.on(engine,"beforeUpdate",()=>{
     Body.applyForce(
       ice,
       ice.position,
-      {x:0, y:-ice.custom.buoyancy}
+      {x:0, y:ice.custom.buoyancy}
     );
 
     // 上端に達したら止める
