@@ -27,10 +27,20 @@
     position: absolute;
     z-index: 10; /* canvasより前面に表示 */
     color: white;
-    font-size: 3em;
+    font-size: 30px;
     font-family: sans-serif;
+    width: 75%;
+    height: 75%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     text-align: center;
-    background: yellow;
+    color: white;
+    background: rgba(255,255,255,0.08);
+    backdrop-filter: blur(15px) saturate(1.2);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-radius: 24px;
+    padding: 40px 60px;
   }
 </style>
 </head>
