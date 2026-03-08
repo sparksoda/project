@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>炭酸の泡アニメーション（大きさ・透明度・浮力連動）</title>
+<title>テストページ</title>
 <script src="matter.min.js"></script>
 <style>
   body {
@@ -14,43 +14,92 @@
     justify-content: center;
     align-items: center;
     position: relative;
-    blur: 1;
-    
   }
 
   canvas {
     display: block;
   }
 
-  /* 中央のテキスト用 */
-  #window {
+  /* 共通ウィンドウスタイル */
+  .window {
     position: absolute;
-    z-index: 10; /* canvasより前面に表示 */
+    z-index: 10;
     color: white;
-    font-size: 30px;
     font-family: sans-serif;
-    width: 75%;
-    height: 75%;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
     text-align: center;
-    color: white;
     background: rgba(255,255,255,0.08);
     backdrop-filter: blur(15px) saturate(1.2);
     border: 2px solid rgba(255, 255, 255, 0.25);
     border-radius: 24px;
     padding: 40px 60px;
+    opacity: 0; /* 初期は非表示 */
+    transition: opacity 1s ease; /* フェード用 */
   }
+
+  /* 小さいサインインウィンドウ */
+  #signin {
+    width: 300px;
+    height: 200px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 1; /* 初期は表示 */
+  }
+
+  /* 大きなメインウィンドウ */
+  #main {
+    width: 75%;
+    height: 75%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 16px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    background-color: rgba(255,255,255,0.2);
+    color: white;
+    backdrop-filter: blur(10px);
+  }
+
 </style>
 </head>
 <body>
 
-<div id="window">
+<!-- 小さなサインインウィンドウ -->
+<div id="signin" class="window">
+  <h2>サインイン</h2>
+  <input type="text" placeholder="ユーザー名"><br><br>
+  <input type="password" placeholder="パスワード"><br><br>
+  <button id="nextBtn">次に進む</button>
+</div>
+
+<!-- 大きなメインウィンドウ -->
+<div id="main" class="window">
   <h1>hello</h1>
 </div>
 
 <script src="bubbles.js"></script>
+<script>
+  const signin = document.getElementById('signin');
+  const main = document.getElementById('main');
+  const nextBtn = document.getElementById('nextBtn');
+
+  nextBtn.addEventListener('click', () => {
+    // サインインをフェードアウト
+    signin.style.opacity = 0;
+    setTimeout(() => {
+      signin.style.display = 'none'; // 完全に消す
+      // メインウィンドウをフェードイン
+      main.style.opacity = 1;
+    }, 1000); // CSSのtransitionと同期
+  });
+</script>
 
 </body>
 </html>
