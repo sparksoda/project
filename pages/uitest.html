@@ -5,94 +5,93 @@
 <title>テストページ</title>
 <script src="matter.min.js"></script>
 <style>
+/* ページ全体スクロール禁止 */
 html, body {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;  /* これでスクロールを完全に無効化 */
+  overflow: hidden;
 }
 
+/* 背景と中央配置 */
 body {
   background: linear-gradient(to top,#1E3C72,#2A5298);
   display: flex;
   justify-content: center;
   align-items: center;
-  position: relative; /* window要素を絶対配置するため */
-}
-/*body{
-  margin:0;
-  height:100vh;
-  background: linear-gradient(to top,#1E3C72,#2A5298);
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  overflow:hidden;
-}*/
-
-.window{
-  position:absolute;
-  color:white;
-  font-family:sans-serif;
-  text-align:center;
-
-  background:rgba(255,255,255,0.08);
-  backdrop-filter:blur(15px);
-
-  border:2px solid rgba(255,255,255,0.25);
-  border-radius:24px;
-
-  padding:40px;
-
-  opacity:0;
-  pointer-events:none;
-
-  transition:opacity 1s;
+  position: relative;
+  font-family: sans-serif;
 }
 
-.show{
-  opacity:1;
-  pointer-events:auto;
+/* ウィンドウ共通 */
+.window {
+  position: absolute;
+  color: white;
+  text-align: center;
+
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(15px);
+
+  border: 2px solid rgba(255,255,255,0.25);
+  border-radius: 24px;
+
+  padding: 40px;
+
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+
+  transition: opacity 1s;
 }
 
-#signin{
-  width:300px;
-  height:auto;
+.window.show {
+  opacity: 1;
+  pointer-events: auto;
 }
 
-#main{
-  width:75%;
-  height:75%;
+/* サイズ指定 */
+#signin {
+  width: 300px;
+  height: auto;
 }
 
-#passwordOverlay{
-  width:300px;
-  height:220px;
-  top:50%;
-  left:50%;
-  transform:translate(-50%,-50%);
+#main {
+  width: 75%;
+  height: 75%;
 }
 
-button{
-  margin-top:20px;
-  padding:10px 20px;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
+#passwordOverlay {
+  width: 300px;
+  height: 220px;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
-#error{
-  color:red;
-  display:none;
-  margin-top:10px;
+/* ボタン */
+button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
 }
 
-input{
-  margin-top:10px;
-  padding:5px;
-  width:80%;
-  border-radius:5px;
-  border:none;
+/* エラーメッセージ */
+#error {
+  color: red;
+  display: none;
+  margin-top: 10px;
+}
+
+/* 入力欄 */
+input {
+  margin-top: 10px;
+  padding: 5px;
+  width: 80%;
+  border-radius: 5px;
+  border: none;
 }
 </style>
 </head>
@@ -121,7 +120,6 @@ input{
 </div>
 
 <script>
-<script>
 const signin = document.getElementById("signin");
 const main = document.getElementById("main");
 const nextBtn = document.getElementById("nextBtn");
@@ -135,7 +133,7 @@ const resumePasswordInput = document.getElementById("resumePassword");
 // localStorageから復帰用パスワードを取得
 let resumePassword = localStorage.getItem("resumePassword") || "1234";
 
-// ページロード時、既に保存されたパスワードがあれば入力欄に表示（任意）
+// ページロード時、既に保存されたパスワードがあれば入力欄に表示
 if(localStorage.getItem("resumePassword")){
   resumePasswordInput.value = resumePassword;
 }
@@ -145,16 +143,15 @@ nextBtn.onclick = () => {
   const newPass = resumePasswordInput.value.trim();
   if(newPass !== ""){
     resumePassword = newPass;
-    // localStorageに保存
     localStorage.setItem("resumePassword", resumePassword);
   }
   signin.classList.remove("show");
   setTimeout(()=>{
     main.classList.add("show");
-  },1000);
+  }, 500);
 };
 
-// パスワードチェック
+// パスワードチェック関数
 function showOverlay() {
   passwordOverlay.classList.add("show");
   main.style.filter = "blur(5px)";
@@ -175,7 +172,13 @@ function checkPassword() {
   }
 }
 
+// ボタンクリック
 unlockBtn.onclick = checkPassword;
+
+// Enterキーで確認
+passwordInput.addEventListener("keydown", (e) => {
+  if(e.key === "Enter") checkPassword();
+});
 
 // タブを離れて戻った時にオーバーレイ表示
 document.addEventListener("visibilitychange", function(){
@@ -183,7 +186,6 @@ document.addEventListener("visibilitychange", function(){
     showOverlay();
   }
 });
-</script>
 </script>
 
 <script src="bubbles.js"></script>
