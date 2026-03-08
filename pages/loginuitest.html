@@ -5,50 +5,71 @@
     <title>パスワード保護ページ</title>
     <style>
         #content {
-            display: none; /* 初期状態は非表示 */
+            padding: 20px;
+        }
+        #overlay {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            color: white;
+            text-align: center;
+            padding-top: 200px;
+            font-size: 24px;
+        }
+        #overlay input {
+            padding: 10px;
+            font-size: 18px;
+        }
+        #overlay button {
+            padding: 10px 20px;
+            font-size: 18px;
         }
     </style>
 </head>
 <body>
-    <div id="passwordDiv">
-        <label for="passwordInput">パスワードを入力してください:</label>
-        <input type="password" id="passwordInput">
-        <button onclick="checkPassword()">確認</button>
-        <p id="error" style="color:red; display:none;">パスワードが間違っています。</p>
+    <div id="content">
+        <h1>秘密のページ</h1>
+        <p>ここは重要な情報です。</p>
     </div>
 
-    <div id="content">
-        <h1>秘密のコンテンツ</h1>
-        <p>ここに本当に見せたい内容を書きます。</p>
+    <div id="overlay">
+        <p>パスワードを入力してください:</p>
+        <input type="password" id="passwordInput">
+        <button onclick="checkPassword()">確認</button>
+        <p id="error" style="color:red; display:none;">パスワードが違います。</p>
     </div>
 
     <script>
-        const correctPassword = "1234"; // パスワード設定
+        const correctPassword = "1234";
 
-        // ページ読み込み時の処理
-        window.onload = function() {
-            // セッションストレージに「アクセス済み」フラグがあればパスワード不要
-            if (sessionStorage.getItem("passwordVerified") === "true") {
-                document.getElementById("passwordDiv").style.display = "none";
-                document.getElementById("content").style.display = "block";
-            }
+        function showOverlay() {
+            document.getElementById("overlay").style.display = "block";
+            document.getElementById("content").style.filter = "blur(5px)";
         }
 
-        // パスワードチェック関数
+        function hideOverlay() {
+            document.getElementById("overlay").style.display = "none";
+            document.getElementById("content").style.filter = "none";
+        }
+
         function checkPassword() {
             const input = document.getElementById("passwordInput").value;
-            if (input === correctPassword) {
-                // 正しいパスワードならコンテンツ表示
-                document.getElementById("passwordDiv").style.display = "none";
-                document.getElementById("content").style.display = "block";
-
-                // セッションストレージにフラグを保存
-                sessionStorage.setItem("passwordVerified", "true");
+            if(input === correctPassword){
+                hideOverlay();
+                document.getElementById("error").style.display = "none";
             } else {
-                // 間違った場合
                 document.getElementById("error").style.display = "block";
             }
         }
+
+        // タブが非表示から再表示になった時を検知
+        document.addEventListener("visibilitychange", function() {
+            if(document.visibilityState === "visible") {
+                showOverlay(); // 戻ってきたらオーバーレイ表示
+            }
+        });
     </script>
 </body>
 </html>
