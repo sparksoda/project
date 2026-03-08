@@ -26,6 +26,12 @@
             padding: 10px 20px;
             font-size: 18px;
         }
+        #error {
+            color: red;
+            display: none;
+            margin-top: 10px;
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
@@ -38,15 +44,18 @@
         <p>パスワードを入力してください:</p>
         <input type="password" id="passwordInput">
         <button onclick="checkPassword()">確認</button>
-        <p id="error" style="color:red; display:none;">パスワードが違います。</p>
+        <div id="error">パスワードが違います。</div>
     </div>
 
     <script>
-        const correctPassword = "1234";
+        const correctPassword = "1234"; // 正しいパスワード
 
         function showOverlay() {
             document.getElementById("overlay").style.display = "block";
             document.getElementById("content").style.filter = "blur(5px)";
+            // 入力欄を毎回クリア
+            document.getElementById("passwordInput").value = "";
+            document.getElementById("error").style.display = "none";
         }
 
         function hideOverlay() {
@@ -58,16 +67,16 @@
             const input = document.getElementById("passwordInput").value;
             if(input === correctPassword){
                 hideOverlay();
-                document.getElementById("error").style.display = "none";
             } else {
+                // 間違っている場合はエラー表示
                 document.getElementById("error").style.display = "block";
             }
         }
 
-        // タブが非表示から再表示になった時を検知
+        // タブが非表示から再表示になった時にオーバーレイ表示
         document.addEventListener("visibilitychange", function() {
             if(document.visibilityState === "visible") {
-                showOverlay(); // 戻ってきたらオーバーレイ表示
+                showOverlay(); // 戻ってきたら必ず入力を要求
             }
         });
     </script>
