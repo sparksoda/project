@@ -116,11 +116,15 @@ const unlockBtn = document.getElementById("unlockBtn");
 const error = document.getElementById("error");
 const resumePasswordInput = document.getElementById("resumePassword");
 
-let resumePassword = ""; // 復帰用パスワードを格納
+// 初期復帰用パスワードを1234に設定
+let resumePassword = "1234";
 
 // サインイン→メインへの移動
 nextBtn.onclick = () => {
-  resumePassword = resumePasswordInput.value; // ユーザーが設定した復帰用パスワードを保存
+  // ユーザーが入力した場合は上書き
+  if(resumePasswordInput.value.trim() !== ""){
+    resumePassword = resumePasswordInput.value;
+  }
   signin.classList.remove("show");
   setTimeout(()=>{
     main.classList.add("show");
