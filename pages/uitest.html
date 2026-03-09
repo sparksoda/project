@@ -50,6 +50,26 @@ body {
   pointer-events: auto;
 }
 
+.signinwindow {
+  position: absolute;
+  color: white;
+  text-align: center;
+
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(15px);
+
+  border: 2px solid rgba(255,255,255,0.25);
+  border-radius: 24px;
+
+  padding: 40px;
+
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+
+  transition: opacity 1s;
+}
+
 /* サイズ指定 */
 #signin {
   width: 300px;
