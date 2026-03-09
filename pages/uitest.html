@@ -50,26 +50,6 @@ body {
   pointer-events: auto;
 }
 
-.signinwindow {
-  position: absolute;
-  color: white;
-  text-align: center;
-
-  background: rgba(255,255,255,0.08);
-  backdrop-filter: blur(15px);
-
-  border: 2px solid rgba(255,255,255,0.25);
-  border-radius: 24px;
-
-  padding: 40px;
-
-  opacity: 1;
-  pointer-events: auto;
-  z-index: 10;
-
-  transition: opacity 1s;
-}
-
 /* サイズ指定 */
 #signin {
   width: 300px;
@@ -118,12 +98,12 @@ input {
 <body>
 
 <!-- サインイン -->
-<div id="signin" class="signinwindow">
-<h3>sign in to Soda</h3>
-<input placeholder="username"><br>
-<input type="password" placeholder="password"><br>
-<input type="password" id="resumePassword" placeholder="waybackpassword"><br>
-<button id="nextBtn">sign in</button>
+<div id="signin" class="window show">
+<h2>サインイン</h2>
+<input placeholder="ユーザー名"><br>
+<input type="password" placeholder="パスワード"><br>
+<input type="password" id="resumePassword" placeholder="復帰用パスワード設定"><br>
+<button id="nextBtn">次に進む</button>
 </div>
 
 <!-- メイン -->
@@ -133,9 +113,9 @@ input {
 
 <!-- 復帰用パスワードオーバーレイ -->
 <div id="passwordOverlay" class="window">
-<p>enter the password:</p>
+<p>パスワードを入力してください:</p>
 <input type="password" id="passwordInput"><br>
-<button id="unlockBtn">unlock</button>
+<button id="unlockBtn">確認</button>
 <div id="error">パスワードが違います。初期設定:1234</div>
 </div>
 
@@ -165,22 +145,22 @@ nextBtn.onclick = () => {
     resumePassword = newPass;
     localStorage.setItem("resumePassword", resumePassword);
   }
-  signin.classList.remove("signinwindow");
+  signin.classList.remove("show");
   setTimeout(()=>{
-    main.classList.add("signinwindow");
+    main.classList.add("show");
   }, 500);
 };
 
 // パスワードチェック関数
 function showOverlay() {
-  passwordOverlay.classList.add("signinwindow");
+  passwordOverlay.classList.add("show");
   main.style.filter = "blur(10px)";
   passwordInput.value = "";
   error.style.display = "none";
 }
 
 function hideOverlay() {
-  passwordOverlay.classList.remove("signinwindow");
+  passwordOverlay.classList.remove("show");
   main.style.filter = "none";
 }
 
@@ -202,7 +182,7 @@ passwordInput.addEventListener("keydown", (e) => {
 
 // タブを離れて戻った時にオーバーレイ表示
 document.addEventListener("visibilitychange", function(){
-  if(document.visibilityState === "visible" && main.classList.contains("signinwindow")){
+  if(document.visibilityState === "visible" && main.classList.contains("show")){
     showOverlay();
   }
 });
