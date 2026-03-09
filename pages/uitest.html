@@ -173,14 +173,14 @@ nextBtn.onclick = () => {
 
 // パスワードチェック関数
 function showOverlay() {
-  passwordOverlay.classList.add("show");
+  passwordOverlay.classList.add("signinwindow");
   main.style.filter = "blur(5px)";
   passwordInput.value = "";
   error.style.display = "none";
 }
 
 function hideOverlay() {
-  passwordOverlay.classList.remove("show");
+  passwordOverlay.classList.remove("signinwindow");
   main.style.filter = "none";
 }
 
