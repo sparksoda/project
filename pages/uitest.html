@@ -165,9 +165,9 @@ nextBtn.onclick = () => {
     resumePassword = newPass;
     localStorage.setItem("resumePassword", resumePassword);
   }
-  signin.classList.remove("show");
+  signin.classList.remove("signinwindow");
   setTimeout(()=>{
-    main.classList.add("show");
+    main.classList.add("signinwindow");
   }, 500);
 };
 
@@ -202,7 +202,7 @@ passwordInput.addEventListener("keydown", (e) => {
 
 // タブを離れて戻った時にオーバーレイ表示
 document.addEventListener("visibilitychange", function(){
-  if(document.visibilityState === "visible" && main.classList.contains("show")){
+  if(document.visibilityState === "visible" && main.classList.contains("signinwindow")){
     showOverlay();
   }
 });
