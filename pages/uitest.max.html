@@ -2,26 +2,15 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>チャットページ</title>
+<title>チャットアプリ</title>
 <script src="matter.min.js"></script>
+<script src="bubbles.js"></script>
 <style>
-/* ページ全体スクロール禁止 */
 html, body {
-  margin: 0;
-  padding: 0;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-/* 背景と中央配置 */
-body {
+  margin:0; padding:0; width:100%; height:100%;
+  font-family:sans-serif;
+  overflow:hidden;
   background: linear-gradient(to top,#1E3C72,#2A5298);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  position: relative;
-  font-family: sans-serif;
 }
 
 /* ウィンドウ共通 */
@@ -40,163 +29,57 @@ body {
   transition: opacity 1s;
 }
 
-.window.show {
-  opacity: 1;
-  pointer-events: auto;
+.window.show { opacity: 1; pointer-events: auto; }
+#signin { width: 300px; height:auto; }
+#passwordOverlay { width:300px; height:220px; top:50%; left:50%; transform:translate(-50%,-50%); }
+
+/* ボタン・入力 */
+button { margin-top:20px; padding:10px 20px; border:none; border-radius:10px; cursor:pointer; }
+input { margin-top:10px; padding:5px; width:80%; border-radius:5px; border:none; }
+
+/* エラー */
+#error { color:red; display:none; margin-top:10px; }
+
+/* =================== チャット用 =================== */
+#app {
+  display:flex; width:90%; height:90%; border-radius:20px;
+  overflow:hidden; background: rgba(255,255,255,0.1); backdrop-filter: blur(15px);
+  border:2px solid rgba(255,255,255,0.2); margin:auto;
 }
 
-/* サイズ指定 */
-#signin {
-  width: 300px;
-  height: auto;
+/* サイドバー */
+#sidebar {
+  width:200px;
+  background: rgba(255,255,255,0.05);
+  display:flex; flex-direction:column; justify-content:space-between;
+  padding:10px; color:white;
 }
+#appName { font-weight:bold; font-size:18px; text-align:center; margin-bottom:20px; }
+#contactList { flex:1; overflow-y:auto; }
+.contact { padding:10px; border-radius:10px; cursor:pointer; margin-bottom:5px; background: rgba(255,255,255,0.1); }
+.contact.active { background:#4CAF50; }
+#settingsBtn { padding:10px; border-radius:10px; border:none; background: rgba(255,255,255,0.2); cursor:pointer; margin-top:10px; }
 
-#main {
-  width: 75%;
-  height: 75%;
-  display: flex;
-  flex-direction: column;
-}
+/* チャットエリア */
+#chatArea { flex:1; display:flex; flex-direction:column; padding:10px; }
+#chatBox{ flex:1; overflow-y:auto; padding:10px; background:rgba(0,0,0,0.2); border-radius:10px; margin-bottom:10px; }
+#chatInputArea{ display:flex; }
+#chatInput{ flex:1; padding:8px; border-radius:10px; border:none; }
+#sendBtn{ margin-left:8px; padding:8px 16px; border-radius:10px; border:none; cursor:pointer; }
 
-#passwordOverlay {
-  width: 300px;
-  height: 220px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-/* ボタン */
-button {
-  margin-top: 20px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-/* エラーメッセージ */
-#error {
-  color: red;
-  display: none;
-  margin-top: 10px;
-}
-
-/* 入力欄 */
-input {
-  margin-top: 10px;
-  padding: 5px;
-  width: 80%;
-  border-radius: 5px;
-  border: none;
-}
-
-/* =================== チャット用CSS =================== */
-/* チャット表示 */
-#chatBox{
-  flex:1;
-  overflow-y:auto;
-  margin-top:20px;
-  padding:10px;
-  background:rgba(0,0,0,0.2);
-  border-radius:10px;
-}
-
-/* メッセージ行 */
-.message{
-  display:flex;
-  margin:8px 0;
-  align-items:flex-end;
-  max-width:70%;
-}
-
-/* 左：相手 */
-.message.other{
-  justify-content:flex-start;
-}
-
-/* 右：自分 */
-.message.self{
-  justify-content:flex-end;
-  margin-left:auto;
-}
-
-/* 吹き出し */
-.bubble{
-  padding:10px 14px;
-  border-radius:18px;
-  position:relative;
-  word-wrap: break-word;
-  background:#ffffff80; /* 半透明白 */
-  color:black;
-}
-
-/* 自分の吹き出し色 */
-.message.self .bubble{
-  background:#4CAF50;
-  color:white;
-}
-
-/* 吹き出しの三角 */
-.message.other .bubble::after{
-  content:'';
-  position:absolute;
-  left:-8px;
-  top:10px;
-  border-width:8px;
-  border-style:solid;
-  border-color:transparent rgba(255,255,255,0.8) transparent transparent;
-}
-
-.message.self .bubble::after{
-  content:'';
-  position:absolute;
-  right:-8px;
-  top:10px;
-  border-width:8px;
-  border-style:solid;
-  border-color:transparent transparent transparent #4CAF50;
-}
+/* メッセージ */
+.message{ display:flex; margin:8px 0; align-items:flex-start; max-width:70%; word-break:break-word; }
+.message.other{ justify-content:flex-start; }
+.message.self{ justify-content:flex-end; margin-left:auto; }
+.bubble{ padding:10px 14px; border-radius:18px; position:relative; word-wrap:break-word; white-space:pre-wrap; max-width:200px; display:flex; align-items:center; background:#ffffff80; color:black; }
+.message.self .bubble{ background:#4CAF50; color:white; }
+.message.other .bubble::after{ content:''; position:absolute; left:-8px; top:10px; border-width:8px; border-style:solid; border-color:transparent rgba(255,255,255,0.8) transparent transparent; }
+.message.self .bubble::after{ content:''; position:absolute; right:-8px; top:10px; border-width:8px; border-style:solid; border-color:transparent transparent transparent #4CAF50; }
 
 /* アイコン */
-.avatar{
-  width:32px;
-  height:32px;
-  border-radius:50%;
-  margin:0 8px;
-  background-size:cover;
-  flex-shrink:0;
-}
-
-/* 左：相手アイコン */
-.message.other .avatar{
-  background-image:url('https://i.pravatar.cc/32?img=3');
-}
-
-/* 右：自分アイコン */
-.message.self .avatar{
-  background-image:url('https://i.pravatar.cc/32?img=5');
-}
-
-/* 入力エリア */
-#chatInputArea{
-  margin-top:10px;
-  display:flex;
-}
-
-#chatInput{
-  flex:1;
-  padding:8px;
-  border-radius:10px;
-  border:none;
-}
-#sendBtn{
-  margin-left:8px;
-  padding:8px 16px;
-  border-radius:10px;
-  border:none;
-  cursor:pointer;
-}
+.avatar{ width:32px; height:32px; border-radius:50%; margin:0 8px; background-size:cover; flex-shrink:0; align-self:flex-start; }
+.message.other .avatar{ background-image:url('https://i.pravatar.cc/32?img=3'); }
+.message.self .avatar{ background-image:url('https://i.pravatar.cc/32?img=5'); }
 </style>
 </head>
 <body>
@@ -210,20 +93,7 @@ input {
 <button id="nextBtn">次に進む</button>
 </div>
 
-<!-- メイン -->
-<div id="main" class="window">
-<h2>チャット</h2>
-
-<div id="chatBox"></div>
-
-<div id="chatInputArea">
-<input id="chatInput" placeholder="メッセージを入力">
-<button id="sendBtn">送信</button>
-</div>
-
-</div>
-
-<!-- 復帰用パスワードオーバーレイ -->
+<!-- 復帰用パスワード -->
 <div id="passwordOverlay" class="window">
 <p>パスワードを入力してください:</p>
 <input type="password" id="passwordInput"><br>
@@ -231,129 +101,89 @@ input {
 <div id="error">パスワードが違います。初期設定:1234</div>
 </div>
 
-<script>
-const signin = document.getElementById("signin");
-const main = document.getElementById("main");
-const nextBtn = document.getElementById("nextBtn");
+<!-- アプリ -->
+<div id="app" class="window">
+  <!-- サイドバー -->
+  <div id="sidebar">
+    <div id="appName">My Chat App</div>
+    <div id="contactList">
+      <div class="contact active" data-name="Alice">Alice</div>
+      <div class="contact" data-name="Bob">Bob</div>
+      <div class="contact" data-name="Charlie">Charlie</div>
+    </div>
+    <button id="settingsBtn">設定</button>
+  </div>
+  <!-- チャット -->
+  <div id="chatArea">
+    <div id="chatBox"></div>
+    <div id="chatInputArea">
+      <input id="chatInput" placeholder="メッセージを入力">
+      <button id="sendBtn">送信</button>
+    </div>
+  </div>
+</div>
 
+<script>
+// サインイン + パスワード
+const signin = document.getElementById("signin");
+const mainApp = document.getElementById("app");
+const nextBtn = document.getElementById("nextBtn");
 const passwordOverlay = document.getElementById("passwordOverlay");
 const passwordInput = document.getElementById("passwordInput");
 const unlockBtn = document.getElementById("unlockBtn");
 const error = document.getElementById("error");
 const resumePasswordInput = document.getElementById("resumePassword");
 
-// localStorageから復帰用パスワードを取得
 let resumePassword = localStorage.getItem("resumePassword") || "1234";
+if(localStorage.getItem("resumePassword")) resumePasswordInput.value = resumePassword;
 
-// ページロード時、既に保存されたパスワードがあれば入力欄に表示
-if(localStorage.getItem("resumePassword")){
-  resumePasswordInput.value = resumePassword;
-}
-
-// サインイン→メインへの移動
 nextBtn.onclick = () => {
   const newPass = resumePasswordInput.value.trim();
-  if(newPass !== ""){
-    resumePassword = newPass;
-    localStorage.setItem("resumePassword", resumePassword);
-  }
+  if(newPass!==""){ resumePassword=newPass; localStorage.setItem("resumePassword",resumePassword); }
   signin.classList.remove("show");
-  setTimeout(()=>{
-    main.classList.add("show");
-  }, 500);
+  setTimeout(()=>{ mainApp.classList.add("show"); },500);
 };
 
-// パスワードチェック関数
-function showOverlay() {
-  passwordOverlay.classList.add("show");
-  main.style.filter = "blur(10px)";
-  passwordInput.value = "";
-  error.style.display = "none";
-}
+function showOverlay() { passwordOverlay.classList.add("show"); mainApp.style.filter="blur(10px)"; passwordInput.value=""; error.style.display="none"; }
+function hideOverlay() { passwordOverlay.classList.remove("show"); mainApp.style.filter="none"; }
+function checkPassword() { if(passwordInput.value===resumePassword){ hideOverlay(); } else{ error.style.display="block"; } }
+unlockBtn.onclick=checkPassword;
+passwordInput.addEventListener("keydown",(e)=>{ if(e.key==="Enter") checkPassword(); });
+document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="visible" && mainApp.classList.contains("show")) showOverlay(); });
 
-function hideOverlay() {
-  passwordOverlay.classList.remove("show");
-  main.style.filter = "none";
-}
-
-function checkPassword() {
-  if(passwordInput.value === resumePassword){
-    hideOverlay();
-  } else {
-    error.style.display = "block";
-  }
-}
-
-// ボタンクリック
-unlockBtn.onclick = checkPassword;
-
-// Enterキーで確認
-passwordInput.addEventListener("keydown", (e) => {
-  if(e.key === "Enter") checkPassword();
-});
-
-// タブを離れて戻った時にオーバーレイ表示
-document.addEventListener("visibilitychange", function(){
-  if(document.visibilityState === "visible" && main.classList.contains("show")){
-    showOverlay();
-  }
-});
-</script>
-
-<!-- =================== チャットスクリプト =================== -->
-<script>
+// チャット
 const chatBox = document.getElementById("chatBox");
 const chatInput = document.getElementById("chatInput");
 const sendBtn = document.getElementById("sendBtn");
+const contacts = document.querySelectorAll(".contact");
+let currentContact = "Alice";
+
+contacts.forEach(c=>{
+  c.onclick=()=>{
+    contacts.forEach(cc=>cc.classList.remove("active"));
+    c.classList.add("active");
+    currentContact = c.dataset.name;
+    chatBox.innerHTML=""; // デモ用にクリア
+  }
+});
 
 function addMessage(text,type){
-
-  const msg = document.createElement("div");
-  msg.classList.add("message", type);
-
-  // アイコン
-  const avatar = document.createElement("div");
-  avatar.classList.add("avatar");
-
-  // 吹き出し
-  const bubble = document.createElement("div");
-  bubble.classList.add("bubble");
-  bubble.textContent = text;
-
-  if(type === "self"){
-    msg.appendChild(bubble);
-    msg.appendChild(avatar);
-  }else{
-    msg.appendChild(avatar);
-    msg.appendChild(bubble);
-  }
-
-  chatBox.appendChild(msg);
-  chatBox.scrollTop = chatBox.scrollHeight;
+  const msg=document.createElement("div");
+  msg.classList.add("message",type);
+  const avatar=document.createElement("div"); avatar.classList.add("avatar");
+  const bubble=document.createElement("div"); bubble.classList.add("bubble"); bubble.textContent=text;
+  if(type==="self"){ msg.appendChild(bubble); msg.appendChild(avatar); } else { msg.appendChild(avatar); msg.appendChild(bubble); }
+  chatBox.appendChild(msg); chatBox.scrollTop=chatBox.scrollHeight;
 }
 
 function sendMessage(){
-
-  const text = chatInput.value.trim();
-  if(text === "") return;
-
-  addMessage(text,"self");
-
-  chatInput.value = "";
-
-  // デモ用：相手の自動返信
-  setTimeout(()=>{
-    addMessage("了解です！","other");
-  },1000);
+  const text=chatInput.value.trim(); if(text==="") return;
+  addMessage(text,"self"); chatInput.value="";
+  setTimeout(()=>{ addMessage("了解です！","other"); },500);
 }
 
-sendBtn.onclick = sendMessage;
-
-chatInput.addEventListener("keydown",(e)=>{
-  if(e.key === "Enter") sendMessage();
-});
+sendBtn.onclick=sendMessage;
+chatInput.addEventListener("keydown",(e)=>{ if(e.key==="Enter") sendMessage(); });
 </script>
-
-<script src="bubbles.js"></script>
 </body>
 </html>
