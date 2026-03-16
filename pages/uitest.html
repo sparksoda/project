@@ -108,8 +108,24 @@ input {
 
 <!-- メイン -->
 <div id="main" class="window">
-<h1>hello</h1>
+  <!-- サイドバー -->
+  <div id="sidebar">
+    <div id="title">Soda SLM</div>
+    <div id="contactList">
+      <div class="chatname" data-name="Alice">New chat</div>
+    </div>
+    <button id="general">general</button>
+  </div>
+  <!-- チャット -->
+  <div id="chatArea">
+    <div id="chatBox"></div>
+    <div id="chatInputArea">
+      <input id="chatInput" placeholder="enter the message">
+      <button id="send">send</button>
+    </div>
+  </div>
 </div>
+
 
 <!-- 復帰用パスワードオーバーレイ -->
 <div id="passwordOverlay" class="window">
