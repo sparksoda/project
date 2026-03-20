@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>テキスト取得ツール</title>
+</head>
+<body>
+  <h2>サイトのテキスト取得</h2>
+
+  <input type="text" id="urlInput" placeholder="URLを入力" size="50">
+  <button onclick="fetchData()">取得</button>
+
+  <h3>結果</h3>
+  <textarea id="result" rows="15" cols="80"></textarea><br>
+
+  <button onclick="downloadText()">ダウンロード</button>
+
+  <script>
+    async function fetchData() {
+      const url = document.getElementById("urlInput").value;
+
+      // CORSプロキシ使用
+      const proxy = "https://api.allorigins.win/raw?url=";
+      const res = await fetch(proxy + encodeURIComponent(url));
+      const html = await res.text();
+
+      // HTML → テキスト変換
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const text = doc.body.innerText;
+
+      document.getElementById("result").value = text;
+    }
+
+    function downloadText() {
+      const text = document.getElementById("result").value;
+      const blob = new Blob([text], { type: "text/plain" });
+
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "result.txt";
+      a.click();
+    }
+  </script>
+</body>
+</html>
